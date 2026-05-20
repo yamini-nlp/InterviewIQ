@@ -8,6 +8,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge, Progress } from "@/components/ui/Badge";
 import { scoreColor } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
+import { MLIMReportSection } from "@/components/mlim/MLIMReportSection";
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer } from "recharts";
 import { Download, BookOpen, Target, TrendingUp, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 
@@ -101,6 +102,8 @@ export default function ReportPage() {
               </Card>
             ))}
           </div>
+
+          <MLIMReportSection sessionId={id as string} />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>

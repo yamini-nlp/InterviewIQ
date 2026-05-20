@@ -8,7 +8,9 @@ import { Navbar } from "@/components/layout/Navbar";
 import { VideoPanel } from "@/components/interview/VideoPanel";
 import { AudioRecorder } from "@/components/interview/AudioRecorder";
 import { TimerBar } from "@/components/interview/TimerBar";
+import { MLIMPanel } from "@/components/mlim/MLIMPanel";
 import { Button } from "@/components/ui/Button";
+import { useMLIM } from "@/hooks/useMLIM";
 import { Loader2, ChevronRight, Clock } from "lucide-react";
 
 interface Message { role: "ai" | "user"; text: string; }
@@ -24,6 +26,7 @@ export default function Simulation() {
   const [answered, setAnswered] = useState(false);
   const [generatingReport, setGeneratingReport] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const mlim = useMLIM();
 
   useEffect(() => {
     const s = loadSession();
@@ -49,12 +52,21 @@ export default function Simulation() {
     setMessages((m) => [...m, { role: "user", text: submittedAnswer }]);
 
     try {
-      const { response } = await simulateRespond({
-        session_id: session.session_id,
-        question_text: current.text,
-        answer_text: submittedAnswer,
-        interviewer_style: "professional",
-      });
+      const [{ response }] = await Promise.all([
+        simulateRespond({
+          session_id: session.session_id,
+          question_text: current.text,
+          answer_text: submittedAnswer,
+          interviewer_style: "professional",
+        }),
+        mlim.analyze({
+          sessionId: session.session_id,
+          questionId: current.id,
+          questionText: current.text,
+          answerText: submittedAnswer,
+          jobRole: session.job_role,
+        }),
+      ]);
       setMessages((m) => [...m, { role: "ai", text: response }]);
       setAnswered(true);
     } catch (e) {
@@ -114,7 +126,10 @@ export default function Simulation() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1 space-y-4">
-            <VideoPanel />
+            <VideoPanel
+              mlimAnalysis={mlim.latestAnalysis}
+              mlimAnalyzing={mlim.isAnalyzing}
+            />
             <div className="glass rounded-xl p-4">
               <p className="text-xs text-gray-500 mb-2 flex items-center gap-1.5">
                 <Clock size={10} /> Time Remaining
@@ -138,6 +153,7 @@ export default function Simulation() {
                 Simulation Mode — No feedback until the end.
               </p>
             </div>
+            <MLIMPanel analysis={mlim.latestAnalysis} history={mlim.analysisHistory} />
           </div>
 
           <div className="lg:col-span-2 flex flex-col gap-4">
@@ -169,7 +185,7 @@ export default function Simulation() {
                 placeholder="Type or record your answer..."
                 rows={5}
                 disabled={answered}
-                className="w-full bg-white/3 border border-white/8 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent/40 placeholder-gray-600 resize-none disabled:opacity-50 text-gray-100"
+                className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none resize-none disabled:opacity-50"
               />
               {!answered ? (
                 <Button

@@ -10,7 +10,9 @@ import { FeedbackCard } from "@/components/interview/FeedbackCard";
 import { VideoPanel } from "@/components/interview/VideoPanel";
 import { AudioRecorder } from "@/components/interview/AudioRecorder";
 import { TimerBar } from "@/components/interview/TimerBar";
+import { MLIMPanel } from "@/components/mlim/MLIMPanel";
 import { Button } from "@/components/ui/Button";
+import { useMLIM } from "@/hooks/useMLIM";
 import { Loader2, ChevronRight } from "lucide-react";
 
 export default function Practice() {
@@ -22,6 +24,7 @@ export default function Practice() {
   const [loading, setLoading] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [timerKey, setTimerKey] = useState(0);
+  const mlim = useMLIM();
 
   useEffect(() => {
     const s = loadSession();
@@ -39,15 +42,24 @@ export default function Practice() {
     if (!answer.trim()) return;
     setLoading(true);
     try {
-      const fb = await evaluateAnswer({
-        session_id: session.session_id,
-        question_id: current.id,
-        question_text: current.text,
-        question_category: current.category,
-        question_difficulty: current.difficulty,
-        answer_text: answer,
-        job_role: session.job_role,
-      });
+      const [fb] = await Promise.all([
+        evaluateAnswer({
+          session_id: session.session_id,
+          question_id: current.id,
+          question_text: current.text,
+          question_category: current.category,
+          question_difficulty: current.difficulty,
+          answer_text: answer,
+          job_role: session.job_role,
+        }),
+        mlim.analyze({
+          sessionId: session.session_id,
+          questionId: current.id,
+          questionText: current.text,
+          answerText: answer,
+          jobRole: session.job_role,
+        }),
+      ]);
       setFeedback(fb);
     } finally {
       setLoading(false);
@@ -73,7 +85,11 @@ export default function Practice() {
       <main className="pt-24 pb-16 px-6 max-w-6xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1 space-y-4">
-            <VideoPanel isSpeaking={isSpeaking} />
+            <VideoPanel
+              isSpeaking={isSpeaking}
+              mlimAnalysis={mlim.latestAnalysis}
+              mlimAnalyzing={mlim.isAnalyzing}
+            />
             <div className="glass rounded-xl p-4">
               <p className="text-xs text-gray-500 mb-2">Time Remaining</p>
               <TimerBar key={timerKey} duration={120} onTimeout={handleSubmit} />
@@ -87,6 +103,7 @@ export default function Practice() {
                   style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }} />
               </div>
             </div>
+            <MLIMPanel analysis={mlim.latestAnalysis} history={mlim.analysisHistory} />
           </div>
           <div className="lg:col-span-2 space-y-5">
             <QuestionCard question={current} index={currentIndex} total={questions.length} />
@@ -98,15 +115,15 @@ export default function Practice() {
                 </div>
                 <textarea value={answer} onChange={(e) => setAnswer(e.target.value)}
                   placeholder="Type or record your answer..." rows={6}
-                  className="w-full bg-white/3 border border-white/8 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent/40 placeholder-gray-600 resize-none" />
-                <Button onClick={handleSubmit} disabled={loading || !answer.trim()} className="w-full">
-                  {loading ? <><Loader2 size={14} className="animate-spin" /> Evaluating...</> : "Submit Answer"}
+                  className="w-full rounded-xl p-4 text-sm resize-none border border-white/10 focus:border-accent/50 transition-colors" />
+                <Button onClick={handleSubmit} disabled={!answer.trim() || loading} className="w-full">
+                  {loading ? <><Loader2 size={16} className="animate-spin mr-2" />Evaluating...</> : "Submit Answer"}
                 </Button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-4 animate-slide-up">
                 <FeedbackCard feedback={feedback} />
-                <Button onClick={handleNext} className="w-full" size="lg">
+                <Button onClick={handleNext} className="w-full">
                   {isLast ? "View Final Report" : <>Next Question <ChevronRight size={16} /></>}
                 </Button>
               </div>

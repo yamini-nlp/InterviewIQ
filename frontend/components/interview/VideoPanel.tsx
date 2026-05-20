@@ -2,8 +2,16 @@
 import { useEffect } from "react";
 import { useCamera } from "@/hooks/useCamera";
 import { VideoOff, Mic } from "lucide-react";
+import { MLIMOverlay } from "@/components/mlim/MLIMOverlay";
+import { MLIMAnalysis } from "@/types/mlim";
 
-export function VideoPanel({ isSpeaking = false }: { isSpeaking?: boolean }) {
+interface Props {
+  isSpeaking?: boolean;
+  mlimAnalysis?: MLIMAnalysis | null;
+  mlimAnalyzing?: boolean;
+}
+
+export function VideoPanel({ isSpeaking = false, mlimAnalysis = null, mlimAnalyzing = false }: Props) {
   const { videoRef, active, error, startCamera, stopCamera } = useCamera();
 
   useEffect(() => {
@@ -28,7 +36,10 @@ export function VideoPanel({ isSpeaking = false }: { isSpeaking?: boolean }) {
           <p className="text-sm">{error || "Starting camera..."}</p>
         </div>
       )}
-      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+
+      <MLIMOverlay analysis={mlimAnalysis} isAnalyzing={mlimAnalyzing} />
+
+      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between z-10">
         <span className="text-xs text-gray-400 bg-black/40 px-2 py-1 rounded-lg">You</span>
         {isSpeaking && (
           <div className="flex items-center gap-1.5 bg-accent/20 border border-accent/30 px-2 py-1 rounded-lg">
@@ -37,7 +48,7 @@ export function VideoPanel({ isSpeaking = false }: { isSpeaking?: boolean }) {
           </div>
         )}
       </div>
-      <div className={`absolute inset-0 border-2 rounded-2xl transition-all duration-300 pointer-events-none ${isSpeaking ? "border-accent/60" : "border-transparent"}`} />
+      <div className={`absolute inset-0 border-2 rounded-2xl transition-all duration-300 pointer-events-none z-10 ${isSpeaking ? "border-accent/60" : "border-transparent"}`} />
     </div>
   );
 }
