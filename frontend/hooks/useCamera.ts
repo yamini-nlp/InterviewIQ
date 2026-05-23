@@ -5,6 +5,7 @@ export function useCamera() {
   const streamRef = useRef<MediaStream | null>(null);
   const [active, setActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [suspended, setSuspended] = useState(false);
 
   const startCamera = useCallback(async () => {
     try {
@@ -14,6 +15,7 @@ export function useCamera() {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
         setActive(true);
+        setSuspended(false);
         setError(null);
       }
     } catch {
@@ -23,9 +25,7 @@ export function useCamera() {
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => {
-        t.stop();
-      });
+      streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
     if (videoRef.current) {
@@ -34,14 +34,44 @@ export function useCamera() {
     setActive(false);
   }, []);
 
+  const suspendCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getVideoTracks().forEach((t) => { t.enabled = false; });
+    }
+    setSuspended(true);
+  }, []);
+
+  const resumeCamera = useCallback(async () => {
+    if (streamRef.current) {
+      streamRef.current.getVideoTracks().forEach((t) => { t.enabled = true; });
+      setSuspended(false);
+    } else {
+      await startCamera();
+    }
+  }, [startCamera]);
+
   useEffect(() => {
+    const onHide = () => suspendCamera();
+    const onShow = () => resumeCamera();
+    const onBlur = () => suspendCamera();
+    const onFocus = () => resumeCamera();
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) onHide(); else onShow();
+    });
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("focus", onFocus);
+
     return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("focus", onFocus);
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
       }
     };
-  }, []);
+  }, [suspendCamera, resumeCamera]);
 
-  return { videoRef, active, error, startCamera, stopCamera };
+  return { videoRef, active, error, suspended, startCamera, stopCamera, suspendCamera, resumeCamera };
 }

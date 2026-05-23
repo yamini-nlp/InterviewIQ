@@ -1,8 +1,7 @@
 "use client";
-import { useAudioRecorder } from "@/hooks/useAudioRecorder";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
 import { Mic, MicOff, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
 import { transcribeAudio } from "@/lib/api";
 
 interface Props {
@@ -11,22 +10,67 @@ interface Props {
 }
 
 export function AudioRecorder({ onTranscript, disabled }: Props) {
-  const { isRecording, audioBlob, startRecording, stopRecording } = useAudioRecorder();
+  const [isRecording, setIsRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+
+  const stopAndClean = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    setIsRecording(false);
+  }, []);
 
   useEffect(() => {
-    if (!audioBlob) return;
-    const run = async () => {
-      setTranscribing(true);
-      try {
-        const { transcript } = await transcribeAudio(audioBlob);
-        onTranscript(transcript);
-      } finally {
-        setTranscribing(false);
-      }
-    };
-    run();
-  }, [audioBlob]);
+    return () => { stopAndClean(); };
+  }, [stopAndClean]);
+
+  useEffect(() => {
+    if (disabled) stopAndClean();
+  }, [disabled, stopAndClean]);
+
+  const startRecording = useCallback(async () => {
+    if (disabled) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      chunksRef.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      recorder.onstop = async () => {
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((t) => t.stop());
+          streamRef.current = null;
+        }
+        setTranscribing(true);
+        try {
+          const { transcript } = await transcribeAudio(blob);
+          onTranscript(transcript);
+        } finally {
+          setTranscribing(false);
+        }
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecording(true);
+    } catch {}
+  }, [disabled, onTranscript]);
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+  }, []);
 
   if (transcribing) {
     return (

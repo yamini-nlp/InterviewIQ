@@ -9,6 +9,7 @@
     },
     "dependencies": {
         "clsx": "^2.1.1",
+        "face-api.js": "^0.22.2",
         "html2canvas": "^1.4.1",
         "jspdf": "^4.2.1",
         "lucide-react": "^0.383.0",
