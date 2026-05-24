@@ -247,7 +247,6 @@ Note: intent_distribution values must sum to 1.0"""
     if total > 0:
         dist = {k: v / total for k, v in dist.items()}
 
-    # Always compute entropy locally — never trust LLM entropy value
     entropy = -sum(p * math.log(max(p, 1e-10)) for p in dist.values())
     should_clarify = bool(data.get("should_solicit_clarification", False)) or entropy > 1.5
 
@@ -255,7 +254,7 @@ Note: intent_distribution values must sum to 1.0"""
         intent_label=data.get("intent_label", "genuine_answer"),
         intent_confidence=float(data.get("intent_confidence", 0.5)),
         intent_distribution=dist,
-        entropy=entropy,  # Always local calculation
+        entropy=entropy,  
         should_solicit_clarification=should_clarify,
         clarification_prompt=data.get("clarification_prompt"),
         intent_aware_response_modifier=data.get("intent_aware_response_modifier", ""),
@@ -275,13 +274,11 @@ async def run_mlim_pipeline(
     face_snapshot: Optional[dict] = None,
     voice_features: Optional[dict] = None,
 ) -> MLIMAnalysis:
-    # ASL and PEL run in parallel — they don't depend on each other
     asl, pel = await asyncio.gather(
         run_asl(utterance, face_snapshot, voice_features),
         run_pel(utterance, context_utterances),
     )
 
-    # GSTL uses ASL + PEL signals
     gstl = await run_gstl(
         utterance=utterance,
         job_role=job_role,
@@ -292,7 +289,6 @@ async def run_mlim_pipeline(
         pel=pel,
     )
 
-    # IFL fuses all three + longitudinal history
     ifl = await run_ifl(
         asl=asl,
         pel=pel,
