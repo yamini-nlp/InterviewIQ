@@ -12,10 +12,15 @@ import datetime
 
 router = APIRouter(prefix="/api/mlim", tags=["mlim"])
 
-
 @router.post("/analyze")
 async def analyze(request: MLIMAnalyzeRequest, current_user: dict = Depends(get_current_user)):
     try:
+        db = get_db()
+        if db is not None:
+            session = await db.sessions.find_one({"id": request.session_id})
+            if session and session.get("user_id") != current_user["id"]:
+                raise HTTPException(status_code=403, detail="Access denied")
+
         result = await run_mlim_pipeline(
             utterance=request.answer_text,
             question_text=request.question_text,
@@ -27,16 +32,17 @@ async def analyze(request: MLIMAnalyzeRequest, current_user: dict = Depends(get_
             face_snapshot=request.face_snapshot,
             voice_features=request.voice_features,
         )
-        
-        db = get_db()
+
         if db is not None:
             doc = result.model_dump()
             doc["user_id"] = current_user["id"]
             if doc.get("timestamp") and hasattr(doc["timestamp"], "isoformat"):
                 doc["timestamp"] = doc["timestamp"].isoformat()
             await db.mlim_analyses.insert_one(doc)
-        
+
         return result.model_dump()
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

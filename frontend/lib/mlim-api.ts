@@ -1,50 +1,32 @@
-import { MLIMAnalysis, MLIMAnalyzeRequest, MLIMSessionSummary } from "@/types/mlim";
 import { getAccessToken, refreshAccessToken } from "@/lib/auth";
+import { MLIMAnalyzeRequest, MLIMAnalysis } from "@/types/mlim";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const BASE = process.env.NEXT_PUBLIC_API_URL;
 
-async function mlimFetch<T>(path: string, body: object): Promise<T> {
+async function mlimFetch<T>(path: string, body: unknown): Promise<T> {
   let token = getAccessToken();
-
-  const makeRequest = async (t: string | null) =>
-    fetch(`${API_URL}${path}`, {
+  const makeReq = async (t: string | null) =>
+    fetch(`${BASE}${path}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...(t ? { Authorization: `Bearer ${t}` } : {}) },
+      headers: {
+        "Content-Type": "application/json",
+        ...(t ? { Authorization: `Bearer ${t}` } : {}),
+      },
       body: JSON.stringify(body),
     });
 
-  let res = await makeRequest(token);
+  let res = await makeReq(token);
   if (res.status === 401) {
     token = await refreshAccessToken();
-    if (token) res = await makeRequest(token);
+    if (token) res = await makeReq(token);
   }
-  if (!res.ok) throw new Error("MLIM request failed");
-  return res.json();
-}
-
-async function mlimGet<T>(path: string): Promise<T> {
-  let token = getAccessToken();
-
-  const makeRequest = async (t: string | null) =>
-    fetch(`${API_URL}${path}`, { headers: t ? { Authorization: `Bearer ${t}` } : {} });
-
-  let res = await makeRequest(token);
-  if (res.status === 401) {
-    token = await refreshAccessToken();
-    if (token) res = await makeRequest(token);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "MLIM request failed" }));
+    throw new Error(err.detail || "MLIM request failed");
   }
-  if (!res.ok) throw new Error("MLIM request failed");
   return res.json();
 }
 
 export async function runMLIMAnalysis(req: MLIMAnalyzeRequest): Promise<MLIMAnalysis> {
   return mlimFetch<MLIMAnalysis>("/api/mlim/analyze", req);
-}
-
-export async function getMLIMSessionSummary(sessionId: string): Promise<MLIMSessionSummary> {
-  return mlimGet<MLIMSessionSummary>(`/api/mlim/session/${sessionId}/summary`);
-}
-
-export async function getMLIMAnalyses(sessionId: string): Promise<{ analyses: MLIMAnalysis[] }> {
-  return mlimGet<{ analyses: MLIMAnalysis[] }>(`/api/mlim/session/${sessionId}/analyses`);
 }

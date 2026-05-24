@@ -160,9 +160,9 @@ async def get_report(session_id: str, current_user: dict = Depends(get_current_u
                 if data:
                     return data
             except Exception as db_error:
-                print(f"DB read skipped: {db_error}")
-
-        raise HTTPException(status_code=404, detail="Report not found")
+                logger.error(f"DB read error: {db_error}")
+                raise HTTPException(status_code=503, detail="Database error")
+        raise HTTPException(status_code=404, detail="Report not found. Generate it first via POST /api/reports/generate/{session_id}")
     except HTTPException:
         raise
     except Exception as e:

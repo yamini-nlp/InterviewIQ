@@ -45,35 +45,45 @@ export function InterviewerAvatar({ text, speaking, onSpeakEnd }: Props) {
     if (!speaking || !text) { stopSpeech(); return; }
     if (!synthRef.current) return;
     synthRef.current.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.92;
-    utterance.pitch = 1.05;
-    utterance.volume = 1;
+  
+    const doSpeak = (voices: SpeechSynthesisVoice[]) => {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.92;
+      utterance.pitch = 1.05;
+      utterance.volume = 1;
+      const preferred = voices.find((v) => v.name.toLowerCase().includes("google") && v.lang === "en-US")
+        || voices.find((v) => v.lang === "en-US") || voices[0];
+      if (preferred) utterance.voice = preferred;
+      utterance.onstart = () => {
+        setIsSpeaking(true);
+        if (mouthTimer.current) clearInterval(mouthTimer.current);
+        mouthTimer.current = setInterval(() => setMouthOpen(Math.random() * 0.85 + 0.15), 90);
+      };
+      utterance.onend = () => {
+        if (mouthTimer.current) clearInterval(mouthTimer.current);
+        setMouthOpen(0);
+        setIsSpeaking(false);
+        onSpeakEnd?.();
+      };
+      utterance.onerror = () => {
+        if (mouthTimer.current) clearInterval(mouthTimer.current);
+        setMouthOpen(0);
+        setIsSpeaking(false);
+        onSpeakEnd?.();
+      };
+      setTimeout(() => synthRef.current?.speak(utterance), 400);
+    };
+  
     const voices = synthRef.current.getVoices();
-    const preferred = voices.find((v) => v.name.toLowerCase().includes("google") && v.lang === "en-US")
-      || voices.find((v) => v.lang === "en-US") || voices[0];
-    if (preferred) utterance.voice = preferred;
-    utterance.onstart = () => {
-      setIsSpeaking(true);
-      if (mouthTimer.current) clearInterval(mouthTimer.current);
-      mouthTimer.current = setInterval(() => setMouthOpen(Math.random() * 0.85 + 0.15), 90);
-    };
-    utterance.onend = () => {
-      if (mouthTimer.current) clearInterval(mouthTimer.current);
-      setMouthOpen(0);
-      setIsSpeaking(false);
-      onSpeakEnd?.();
-    };
-    utterance.onerror = () => {
-      if (mouthTimer.current) clearInterval(mouthTimer.current);
-      setMouthOpen(0);
-      setIsSpeaking(false);
-      onSpeakEnd?.();
-    };
-    const delay = setTimeout(() => synthRef.current?.speak(utterance), 400);
-    return () => clearTimeout(delay);
+    if (voices.length > 0) {
+      doSpeak(voices);
+    } else {
+      const handler = () => { doSpeak(synthRef.current!.getVoices()); };
+      synthRef.current.addEventListener("voiceschanged", handler);
+      return () => synthRef.current?.removeEventListener("voiceschanged", handler);
+    }
   }, [speaking, text, stopSpeech, onSpeakEnd]);
-
+  
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;

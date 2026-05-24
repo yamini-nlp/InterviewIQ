@@ -1,35 +1,41 @@
-const ACCESS_KEY = "rr_access_token";
-const REFRESH_KEY = "rr_refresh_token";
 const USER_KEY = "rr_user";
 
 export function getAccessToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(ACCESS_KEY);
+  return getCookieValue("rr_access_token");
 }
 
 export function getRefreshToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(REFRESH_KEY);
+  return getCookieValue("rr_refresh_token");
+}
+
+function getCookieValue(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
+  return match ? decodeURIComponent(match[1]) : null;
 }
 
 export function setTokens(access: string, refresh: string) {
-  localStorage.setItem(ACCESS_KEY, access);
-  localStorage.setItem(REFRESH_KEY, refresh);
+  const secure = window.location.protocol === "https:";
+  const secureFlag = secure ? "; Secure" : "";
+  document.cookie = `rr_access_token=${encodeURIComponent(access)}; Path=/; SameSite=Strict; Max-Age=900${secureFlag}`;
+  document.cookie = `rr_refresh_token=${encodeURIComponent(refresh)}; Path=/; SameSite=Strict; Max-Age=604800${secureFlag}`;
 }
 
 export function clearTokens() {
-  localStorage.removeItem(ACCESS_KEY);
-  localStorage.removeItem(REFRESH_KEY);
-  localStorage.removeItem(USER_KEY);
+  document.cookie = "rr_access_token=; Path=/; Max-Age=0";
+  document.cookie = "rr_refresh_token=; Path=/; Max-Age=0";
+  if (typeof localStorage !== "undefined") localStorage.removeItem(USER_KEY);
 }
 
 export function setUser(user: { id: string; email: string; name: string }) {
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  if (typeof localStorage !== "undefined") localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
 export function getUser(): { id: string; email: string; name: string } | null {
   if (typeof window === "undefined") return null;
-  const raw = localStorage.getItem(USER_KEY);
+  const raw = typeof localStorage !== "undefined" ? localStorage.getItem(USER_KEY) : null;
   return raw ? JSON.parse(raw) : null;
 }
 
@@ -43,9 +49,9 @@ export async function refreshAccessToken(): Promise<string | null> {
       body: JSON.stringify({ refresh_token: refresh }),
     });
     if (!res.ok) { clearTokens(); return null; }
-    const { access_token } = await res.json();
-    localStorage.setItem(ACCESS_KEY, access_token);
-    return access_token;
+    const data = await res.json();
+    setTokens(data.access_token, data.refresh_token);
+    return data.access_token;
   } catch {
     clearTokens();
     return null;

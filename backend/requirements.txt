@@ -13,3 +13,4 @@ certifi==2024.12.14
 pymongo==4.9.2
 PyJWT==2.10.1
 bcrypt==4.2.1
+slowapi==0.1.9
