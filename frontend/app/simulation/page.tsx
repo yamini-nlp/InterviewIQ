@@ -11,6 +11,7 @@ import { InterviewerAvatar } from "@/components/interview/InterviewerAvatar";
 import { LiveAnalyticsPanel } from "@/components/interview/LiveAnalyticsPanel";
 import { useMLIM } from "@/hooks/useMLIM";
 import { useCheatingDetection } from "@/hooks/useCheatingDetection";
+import { getAccessToken } from "@/lib/auth";
 import { Loader2, ChevronRight, AlertTriangle, Mic, MicOff, Send, Keyboard, Volume2 } from "lucide-react";
 
 interface Message {
@@ -38,12 +39,13 @@ export default function Simulation() {
   const [speakEnabled, setSpeakEnabled] = useState(true);
   const [faceData, setFaceData] = useState<any>(null);
   const [timerActive, setTimerActive] = useState(false);
+  const [cameraSuspended, setCameraSuspended] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const streamRef = useRef<MediaStream | null>(null);
+  const audioStreamRef = useRef<MediaStream | null>(null);
   const mlim = useMLIM();
-  const cheating = useCheatingDetection(true);
+  const cheating = useCheatingDetection(true, audioStreamRef);
 
   useEffect(() => {
     const s = loadSession();
@@ -58,6 +60,20 @@ export default function Simulation() {
     } else {
       setTimerActive(true);
     }
+  }, []);
+
+  useEffect(() => {
+    const handleVisibility = () => setCameraSuspended(document.hidden);
+    const handleBlur = () => setCameraSuspended(true);
+    const handleFocus = () => setCameraSuspended(false);
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("blur", handleBlur);
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, []);
 
   const handleAvatarSpeakEnd = useCallback(() => {
@@ -80,22 +96,30 @@ export default function Simulation() {
     const current = questions[currentIndex];
     setMessages((m) => [...m, { role: "user", text: answerToSubmit }]);
     setAnswer("");
+
     try {
-      const [{ response }] = await Promise.all([
-        simulateRespond({
-          session_id: session.session_id,
-          question_text: current.text,
-          answer_text: answerToSubmit,
-          interviewer_style: "professional",
-        }),
-        mlim.analyze({
-          sessionId: session.session_id,
-          questionId: current.id,
-          questionText: current.text,
-          answerText: answerToSubmit,
-          jobRole: session.job_role,
-        }),
-      ]);
+      const mlimResult = await mlim.analyze({
+        sessionId: session.session_id,
+        questionId: current.id,
+        questionText: current.text,
+        answerText: answerToSubmit,
+        jobRole: session.job_role,
+        faceSnapshot: faceData,
+      });
+
+      const shouldClarify = mlimResult?.ifl?.should_solicit_clarification ?? false;
+      const clarificationPrompt = mlimResult?.ifl?.clarification_prompt ?? null;
+      const mlimModifier = mlimResult?.ifl?.intent_aware_response_modifier ?? "";
+
+      const { response } = await simulateRespond({
+        session_id: session.session_id,
+        question_text: current.text,
+        answer_text: answerToSubmit,
+        interviewer_style: "professional",
+        mlim_modifier: mlimModifier,
+        clarification_prompt: shouldClarify && clarificationPrompt ? clarificationPrompt : undefined,
+      });
+
       setMessages((m) => [...m, { role: "ai", text: response }]);
       setAnswered(true);
       speakText(response);
@@ -107,7 +131,7 @@ export default function Simulation() {
     } finally {
       setLoading(false);
     }
-  }, [answer, loading, session, currentIndex, mlim, speakText]);
+  }, [answer, loading, session, currentIndex, mlim, speakText, faceData]);
 
   const handleNext = useCallback(async () => {
     if (!session) return;
@@ -116,6 +140,8 @@ export default function Simulation() {
     if (isLast) {
       setGeneratingReport(true);
       try {
+        const token = getAccessToken();
+        if (token) await cheating.flushEvents(session.session_id, token);
         const report = await generateReport(session.session_id);
         saveSession({ ...session, report });
         router.push(`/report/${session.session_id}`);
@@ -134,7 +160,7 @@ export default function Simulation() {
       setMessages((m) => [...m, { role: "ai", text: next.text }]);
       speakText(next.text);
     }
-  }, [session, currentIndex, router, speakText]);
+  }, [session, currentIndex, router, speakText, cheating]);
 
   const handleTimeout = useCallback(() => {
     if (!answered && answer.trim()) {
@@ -152,12 +178,15 @@ export default function Simulation() {
     if (isRecording || transcribing) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
+      audioStreamRef.current = stream;
       const recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
       chunksRef.current = [];
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       recorder.onstop = async () => {
-        if (streamRef.current) { streamRef.current.getTracks().forEach((t) => t.stop()); streamRef.current = null; }
+        if (audioStreamRef.current) {
+          audioStreamRef.current.getTracks().forEach((t) => t.stop());
+          audioStreamRef.current = null;
+        }
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
         setTranscribing(true);
         try {
@@ -172,14 +201,18 @@ export default function Simulation() {
   }, [isRecording, transcribing]);
 
   const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") mediaRecorderRef.current.stop();
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
     setIsRecording(false);
   }, []);
 
   useEffect(() => {
     return () => {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") mediaRecorderRef.current.stop();
-      if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+      }
+      if (audioStreamRef.current) audioStreamRef.current.getTracks().forEach((t) => t.stop());
     };
   }, []);
 
@@ -220,6 +253,7 @@ export default function Simulation() {
                 mlimAnalysis={mlim.latestAnalysis}
                 mlimAnalyzing={mlim.isAnalyzing}
                 onFaceData={setFaceData}
+                suspended={cameraSuspended}
               />
 
               <div className="absolute top-3 right-3 w-36 h-28 rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-night-800 z-20">
@@ -255,10 +289,16 @@ export default function Simulation() {
               <div className="px-4 pb-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex gap-1.5">
-                    <button onClick={() => setInputMode("text")} className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-mono border transition-all ${inputMode === "text" ? "bg-accent/20 border-accent/30 text-accent" : "bg-white/5 border-white/10 text-gray-500 hover:text-gray-300"}`}>
+                    <button
+                      onClick={() => setInputMode("text")}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-mono border transition-all ${inputMode === "text" ? "bg-accent/20 border-accent/30 text-accent" : "bg-white/5 border-white/10 text-gray-500 hover:text-gray-300"}`}
+                    >
                       <Keyboard size={10} /> TEXT
                     </button>
-                    <button onClick={() => setInputMode("voice")} className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-mono border transition-all ${inputMode === "voice" ? "bg-accent/20 border-accent/30 text-accent" : "bg-white/5 border-white/10 text-gray-500 hover:text-gray-300"}`}>
+                    <button
+                      onClick={() => setInputMode("voice")}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-mono border transition-all ${inputMode === "voice" ? "bg-accent/20 border-accent/30 text-accent" : "bg-white/5 border-white/10 text-gray-500 hover:text-gray-300"}`}
+                    >
                       <Mic size={10} /> VOICE
                     </button>
                   </div>
@@ -277,19 +317,39 @@ export default function Simulation() {
                     <textarea
                       value={answer}
                       onChange={(e) => setAnswer(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !answered && answer.trim()) { e.preventDefault(); handleSubmit(); } }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey && !answered && answer.trim()) {
+                          e.preventDefault();
+                          handleSubmit();
+                        }
+                      }}
                       placeholder="Type your answer... (Enter to submit)"
                       rows={2}
                       disabled={answered || loading}
                       className="flex-1 rounded-xl px-3 py-2 text-sm focus:outline-none resize-none disabled:opacity-50"
                     />
                     {!answered ? (
-                      <button onClick={() => handleSubmit()} disabled={loading || !answer.trim() || answered} className="w-10 rounded-xl bg-accent hover:bg-accent-light disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-colors flex-shrink-0">
+                      <button
+                        onClick={() => handleSubmit()}
+                        disabled={loading || !answer.trim() || answered}
+                        className="w-10 rounded-xl bg-accent hover:bg-accent-light disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-colors flex-shrink-0"
+                      >
                         {loading ? <Loader2 size={16} className="animate-spin text-white" /> : <Send size={16} className="text-white" />}
                       </button>
                     ) : (
-                      <button onClick={handleNext} disabled={generatingReport || avatarSpeaking} className="px-3 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors flex-shrink-0 text-white text-sm font-medium">
-                        {generatingReport ? <Loader2 size={14} className="animate-spin" /> : avatarSpeaking ? <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /><span className="text-xs">Speaking</span></div> : isLast ? "Report" : <><ChevronRight size={14} /> Next</>}
+                      <button
+                        onClick={handleNext}
+                        disabled={generatingReport || avatarSpeaking}
+                        className="px-3 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors flex-shrink-0 text-white text-sm font-medium"
+                      >
+                        {generatingReport ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : avatarSpeaking ? (
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                            <span className="text-xs">Speaking</span>
+                          </div>
+                        ) : isLast ? "Report" : <><ChevronRight size={14} /> Next</>}
                       </button>
                     )}
                   </div>
@@ -301,18 +361,34 @@ export default function Simulation() {
                       </div>
                     ) : !answered ? (
                       <>
-                        <button onClick={isRecording ? stopRecording : startRecording} disabled={answered || loading} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-all flex-1 justify-center ${isRecording ? "bg-red-500/20 border-red-500/40 text-red-400 animate-pulse" : "bg-accent/15 border-accent/30 text-accent hover:bg-accent/25"}`}>
+                        <button
+                          onClick={isRecording ? stopRecording : startRecording}
+                          disabled={answered || loading}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-all flex-1 justify-center ${isRecording ? "bg-red-500/20 border-red-500/40 text-red-400 animate-pulse" : "bg-accent/15 border-accent/30 text-accent hover:bg-accent/25"}`}
+                        >
                           {isRecording ? <><MicOff size={14} /> Stop Recording</> : <><Mic size={14} /> Start Recording</>}
                         </button>
                         {answer && (
-                          <button onClick={() => handleSubmit()} disabled={loading} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-accent hover:bg-accent-light text-white text-sm font-medium transition-colors">
+                          <button
+                            onClick={() => handleSubmit()}
+                            disabled={loading}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-accent hover:bg-accent-light text-white text-sm font-medium transition-colors"
+                          >
                             <Send size={14} /> Submit
                           </button>
                         )}
                       </>
                     ) : (
-                      <button onClick={handleNext} disabled={generatingReport || avatarSpeaking} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-sm font-medium transition-colors flex-1 justify-center">
-                        {generatingReport ? <><Loader2 size={14} className="animate-spin" /> Generating...</> : avatarSpeaking ? <><div className="w-2 h-2 rounded-full bg-white animate-pulse" /> Speaking...</> : isLast ? "View Report" : <><ChevronRight size={14} /> Next Question</>}
+                      <button
+                        onClick={handleNext}
+                        disabled={generatingReport || avatarSpeaking}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-sm font-medium transition-colors flex-1 justify-center"
+                      >
+                        {generatingReport ? (
+                          <><Loader2 size={14} className="animate-spin" /> Generating...</>
+                        ) : avatarSpeaking ? (
+                          <><div className="w-2 h-2 rounded-full bg-white animate-pulse" /> Speaking...</>
+                        ) : isLast ? "View Report" : <><ChevronRight size={14} /> Next Question</>}
                       </button>
                     )}
                     {answer && !answered && !transcribing && (
@@ -335,7 +411,9 @@ export default function Simulation() {
               totalQuestions={questions.length}
               integrityScore={cheatingData.integrity_score}
               tabSwitches={cheatingData.tab_switches}
+              windowBlurs={cheatingData.window_blurs}
               copyPastes={cheatingData.copy_pastes}
+              suspended={cameraSuspended}
             />
           </div>
         </div>

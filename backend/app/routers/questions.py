@@ -1,16 +1,18 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
 from app.models.question import GenerateQuestionsRequest
 from app.services.question_service import generate_questions
 from app.services.groq_service import transcribe_audio
 from app.database import get_db
-from app.models.session import Session, SessionMode
-from app.routers.reports import in_memory_sessions
+from app.models.session import SessionMode
+from app.auth.dependencies import get_current_user
+from datetime import datetime
 import uuid
 
 router = APIRouter(prefix="/api/questions", tags=["questions"])
 
+
 @router.post("/generate")
-async def generate(request: GenerateQuestionsRequest):
+async def generate(request: GenerateQuestionsRequest, current_user: dict = Depends(get_current_user)):
     try:
         questions = await generate_questions(
             request.job_role,
@@ -21,16 +23,21 @@ async def generate(request: GenerateQuestionsRequest):
             request.num_scenario,
         )
         session_id = str(uuid.uuid4())
-        session = Session(
-            id=session_id,
-            job_role=request.job_role,
-            job_description=request.job_description,
-            mode=SessionMode.practice,
-            questions=questions,
-        )
-        session_data = session.model_dump()
-        in_memory_sessions[session_id] = session_data
-
+        session_data = {
+            "id": session_id,
+            "user_id": current_user["id"],
+            "job_role": request.job_role,
+            "job_description": request.job_description,
+            "resume_text": request.resume_text or "",
+            "mode": SessionMode.practice.value,
+            "questions": [q.model_dump() for q in questions],
+            "answers": [],
+            "feedbacks": [],
+            "integrity_events": [],
+            "created_at": datetime.utcnow().isoformat(),
+            "completed_at": None,
+            "overall_score": None,
+        }
         try:
             db = get_db()
             if db is not None:
@@ -42,8 +49,9 @@ async def generate(request: GenerateQuestionsRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.post("/transcribe")
-async def transcribe(audio: UploadFile = File(...)):
+async def transcribe(audio: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
     try:
         audio_bytes = await audio.read()
         text = await transcribe_audio(audio_bytes, audio.filename or "audio.webm")

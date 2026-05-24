@@ -28,9 +28,7 @@ export function useCamera() {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
+    if (videoRef.current) videoRef.current.srcObject = null;
     setActive(false);
   }, []);
 
@@ -51,21 +49,20 @@ export function useCamera() {
   }, [startCamera]);
 
   useEffect(() => {
-    const onHide = () => suspendCamera();
-    const onShow = () => resumeCamera();
-    const onBlur = () => suspendCamera();
-    const onFocus = () => resumeCamera();
+    const handleVisibility = () => {
+      if (document.hidden) suspendCamera(); else resumeCamera();
+    };
+    const handleBlur = () => suspendCamera();
+    const handleFocus = () => resumeCamera();
 
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden) onHide(); else onShow();
-    });
-    window.addEventListener("blur", onBlur);
-    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("blur", handleBlur);
+    window.addEventListener("focus", handleFocus);
 
     return () => {
-      document.removeEventListener("visibilitychange", onHide);
-      window.removeEventListener("blur", onBlur);
-      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("focus", handleFocus);
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;

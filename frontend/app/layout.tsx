@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 export const metadata: Metadata = {
-  title: "InterviewIQ — AI Interview Coach",
-  description: "Practice, simulate, and ace your next interview with AI",
+  title: "RoleReady — AI Interview Coach",
+  description: "Practice, simulate, and ace your next interview with AI-powered MLIM analysis",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -19,7 +20,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body style={{ background: "#08090c", color: "#e8e8f0", margin: 0, fontFamily: "'DM Sans', sans-serif" }}>
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

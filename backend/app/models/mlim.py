@@ -1,7 +1,8 @@
 from pydantic import BaseModel
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
+import math
 
 
 class SpeechActType(str, Enum):
@@ -10,6 +11,7 @@ class SpeechActType(str, Enum):
     commissive = "commissive"
     representative = "representative"
     declarative = "declarative"
+    interrogative = "interrogative"  # Added per paper spec
 
 
 class IntentLabel(str, Enum):
@@ -26,8 +28,8 @@ class IntentLabel(str, Enum):
 class ASLOutput(BaseModel):
     sentiment: str
     sentiment_confidence: float
-    valence: float
-    arousal: float
+    valence: float       # -1.0 to 1.0
+    arousal: float       # 0.0 to 1.0
     uncertainty_s: float
     affective_masking_detected: bool
     masking_reason: Optional[str] = None
@@ -65,7 +67,7 @@ class IFLOutput(BaseModel):
     intent_label: str
     intent_confidence: float
     intent_distribution: Dict[str, float]
-    entropy: float
+    entropy: float  # Always computed locally, not from LLM
     should_solicit_clarification: bool
     clarification_prompt: Optional[str] = None
     intent_aware_response_modifier: str
@@ -81,7 +83,9 @@ class MLIMAnalysis(BaseModel):
     pel: PELOutput
     gstl: GSTLOutput
     ifl: IFLOutput
-    timestamp: datetime = None
+    face_snapshot: Optional[Dict[str, Any]] = None   # NEW
+    voice_features: Optional[Dict[str, Any]] = None  # NEW
+    timestamp: Optional[datetime] = None
 
     def model_post_init(self, __context):
         if self.timestamp is None:
@@ -117,6 +121,8 @@ class MLIMAnalyzeRequest(BaseModel):
     context_utterances: List[str] = []
     interaction_history: List[InteractionEntry] = []
     prior_goal_state: Optional[GoalState] = None
+    face_snapshot: Optional[Dict[str, Any]] = None   # NEW
+    voice_features: Optional[Dict[str, Any]] = None  # NEW
 
 
 class MLIMSessionSummary(BaseModel):
@@ -131,3 +137,5 @@ class MLIMSessionSummary(BaseModel):
     affective_masking_count: int
     sarcasm_count: int
     recommended_actions: List[str]
+    average_stress: float = 0.0         # NEW
+    average_engagement: float = 0.0     # NEW

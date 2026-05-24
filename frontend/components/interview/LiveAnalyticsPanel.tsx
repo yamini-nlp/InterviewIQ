@@ -105,7 +105,7 @@ export function LiveAnalyticsPanel({ mlimAnalysis, mlimAnalyzing, faceData, curr
             </div>
             <Bar label="Sentiment Conf." value={a.asl.sentiment_confidence} color={sc(a.asl.sentiment)} />
             <Bar label="Valence" value={(a.asl.valence + 1) / 2} color={a.asl.valence > 0 ? "#10b981" : "#ef4444"} />
-            <Bar label="Arousal" value={(a.asl.arousal + 1) / 2} color="#a78bfa" />
+            <Bar label="Arousal" value={a.asl.arousal} color="#a78bfa" />
             <Bar label="Uncertainty" value={a.asl.uncertainty_s} color="#f59e0b" />
             {a.asl.affective_masking_detected && (
               <div className="bg-amber-500/10 border border-amber-500/20 rounded px-2 py-1 mt-1">

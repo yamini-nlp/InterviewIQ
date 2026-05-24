@@ -1,24 +1,28 @@
 import json
 import math
+import asyncio
 from typing import List, Optional
 from app.services.groq_service import call_groq_json
 from app.models.mlim import (
-    ASLOutput,
-    PELOutput,
-    GSTLOutput,
-    IFLOutput,
-    MLIMAnalysis,
-    GoalState,
-    InteractionEntry,
-    SpeechActType,
-    IntentLabel,
+    ASLOutput, PELOutput, GSTLOutput, IFLOutput, MLIMAnalysis,
+    GoalState, InteractionEntry, SpeechActType, IntentLabel,
 )
 
 
-async def run_asl(utterance: str) -> ASLOutput:
+async def run_asl(utterance: str, face_snapshot: Optional[dict] = None, voice_features: Optional[dict] = None) -> ASLOutput:
+    face_str = ""
+    if face_snapshot:
+        dominant = face_snapshot.get("dominantExpression", "neutral")
+        confidence = face_snapshot.get("confidence", 0)
+        face_str = f"\nFacial expression data: dominant={dominant} (confidence={confidence:.2f})"
+    
+    voice_str = ""
+    if voice_features:
+        voice_str = f"\nVoice features: pace={voice_features.get('pace', 'unknown')}, energy={voice_features.get('energy', 0):.2f}"
+
     prompt = f"""You are an affective computing system. Analyze this utterance for sentiment and dimensional affect.
 
-Utterance: "{utterance}"
+Utterance: "{utterance}"{face_str}{voice_str}
 
 Respond ONLY in this exact JSON format:
 {{
@@ -53,7 +57,7 @@ Current utterance: "{utterance}"
 
 Analyze the illocutionary force and pragmatic features. Respond ONLY in this exact JSON format:
 {{
-  "primary_speech_act": "directive|expressive|commissive|representative|declarative",
+  "primary_speech_act": "directive|expressive|commissive|representative|declarative|interrogative",
   "speech_act_confidence": <float 0.0-1.0>,
   "secondary_speech_acts": ["act1", "act2"],
   "sarcasm_detected": <boolean>,
@@ -94,6 +98,8 @@ async def run_gstl(
     question_text: str,
     prior_goal_state: Optional[GoalState],
     interaction_history: List[InteractionEntry],
+    asl: ASLOutput,
+    pel: PELOutput,
 ) -> GSTLOutput:
     history_str = ""
     for entry in interaction_history[-4:]:
@@ -113,6 +119,9 @@ Job Role: {job_role}
 Current Question: "{question_text}"
 Current Utterance: "{utterance}"
 
+Affective signals: valence={asl.valence:.2f}, arousal={asl.arousal:.2f}, sentiment={asl.sentiment}
+Pragmatic signals: speech_act={pel.primary_speech_act}, frustration={pel.is_expressing_frustration}, confusion={pel.is_signaling_confusion}
+
 Interaction History (last 4 turns):
 {history_str if history_str else "No prior interactions."}
 
@@ -128,18 +137,26 @@ Estimate the user's current goal state. Respond ONLY in this exact JSON format:
     "build_confidence": <float 0.0-1.0>,
     "explore_role": <float 0.0-1.0>
   }},
-  "confidence_level": <float 0.0-1.0, confidence in goal estimate>,
-  "goal_drift_detected": <boolean, true if goal seems to have shifted from prior>,
+  "confidence_level": <float 0.0-1.0>,
+  "goal_drift_detected": <boolean>,
   "session_trajectory": "improving|declining|stable|volatile|insufficient_data",
   "engagement_level": <float 0.0-1.0>,
-  "stress_indicators": <float 0.0-1.0, inferred stress from answer patterns>,
-  "readiness_estimate": <float 0.0-1.0, estimated interview readiness>,
+  "stress_indicators": <float 0.0-1.0>,
+  "readiness_estimate": <float 0.0-1.0>,
   "recommended_system_action": "encourage|challenge|clarify|simplify|validate|escalate_difficulty"
 }}
 
 Note: goal_belief_distribution values must sum to 1.0"""
     data = await call_groq_json(prompt)
     belief_dist = data.get("goal_belief_distribution", {})
+    
+    # Server-side normalization
+    total = sum(belief_dist.values()) if belief_dist else 0
+    if total > 0 and abs(total - 1.0) > 0.01:
+        belief_dist = {k: v / total for k, v in belief_dist.items()}
+    elif not belief_dist:
+        belief_dist = {"demonstrate_competence": 0.2, "seek_feedback": 0.2, "pass_screening": 0.2, "build_confidence": 0.2, "explore_role": 0.2}
+    
     return GSTLOutput(
         dominant_goal=data.get("dominant_goal", "unclear"),
         goal_belief_distribution=belief_dist,
@@ -160,12 +177,20 @@ async def run_ifl(
     utterance: str,
     question_text: str,
     job_role: str,
+    longitudinal_history: List[InteractionEntry],
 ) -> IFLOutput:
-    prompt = f"""You are the Intent Fusion Layer of the MLIM framework. Integrate signals from all analysis layers.
+    history_summary = ""
+    if longitudinal_history:
+        recent = longitudinal_history[-3:]
+        history_summary = f"\nLongitudinal history (last {len(recent)} turns):"
+        for entry in recent:
+            history_summary += f"\n  - Intent: {entry.intent_label or 'unknown'}, Score: {entry.score}/10"
+
+    prompt = f"""You are the Intent Fusion Layer (IFL) of the MLIM framework. Integrate signals from all analysis layers.
 
 Job Role: {job_role}
 Question: "{question_text}"
-Utterance: "{utterance}"
+Utterance: "{utterance}"{history_summary}
 
 Layer 1 - Affective Signal (ASL):
 - Sentiment: {asl.sentiment} (confidence: {asl.sentiment_confidence:.2f})
@@ -204,15 +229,14 @@ Produce the final intent prediction. Respond ONLY in this exact JSON format:
     "committed_retry": <float>,
     "off_topic": <float>
   }},
-  "entropy": <float 0.0-3.0, uncertainty of prediction - compute from distribution>,
-  "should_solicit_clarification": <boolean, true if entropy > 1.5>,
+  "should_solicit_clarification": <boolean, true if uncertainty warrants follow-up>,
   "clarification_prompt": "<suggested clarification question if needed, else null>",
   "intent_aware_response_modifier": "<how the system should adjust its response given this intent>",
   "failure_mode_detected": "none|affective_masking|pragmatic_inversion|temporal_goal_drift|role_ambiguity",
   "failure_mode_explanation": "<brief explanation if failure mode detected>"
 }}
 
-Note: intent_distribution values must sum to 1.0. Compute entropy as -sum(p*log(p)) over distribution."""
+Note: intent_distribution values must sum to 1.0"""
     data = await call_groq_json(prompt)
 
     dist = data.get("intent_distribution", {})
@@ -223,14 +247,16 @@ Note: intent_distribution values must sum to 1.0. Compute entropy as -sum(p*log(
     if total > 0:
         dist = {k: v / total for k, v in dist.items()}
 
-    entropy = -sum(p * math.log(p + 1e-10) for p in dist.values())
+    # Always compute entropy locally — never trust LLM entropy value
+    entropy = -sum(p * math.log(max(p, 1e-10)) for p in dist.values())
+    should_clarify = bool(data.get("should_solicit_clarification", False)) or entropy > 1.5
 
     return IFLOutput(
         intent_label=data.get("intent_label", "genuine_answer"),
         intent_confidence=float(data.get("intent_confidence", 0.5)),
         intent_distribution=dist,
-        entropy=float(data.get("entropy", entropy)),
-        should_solicit_clarification=bool(data.get("should_solicit_clarification", False)),
+        entropy=entropy,  # Always local calculation
+        should_solicit_clarification=should_clarify,
         clarification_prompt=data.get("clarification_prompt"),
         intent_aware_response_modifier=data.get("intent_aware_response_modifier", ""),
         failure_mode_detected=data.get("failure_mode_detected", "none"),
@@ -246,23 +272,27 @@ async def run_mlim_pipeline(
     context_utterances: List[str],
     interaction_history: List[InteractionEntry],
     prior_goal_state: Optional[GoalState],
+    face_snapshot: Optional[dict] = None,
+    voice_features: Optional[dict] = None,
 ) -> MLIMAnalysis:
-    asl = await run_asl(utterance)
+    # ASL and PEL run in parallel — they don't depend on each other
+    asl, pel = await asyncio.gather(
+        run_asl(utterance, face_snapshot, voice_features),
+        run_pel(utterance, context_utterances),
+    )
 
-    pel = await run_pel(utterance, context_utterances)
-
-    prior_gs = None
-    if prior_goal_state:
-        prior_gs = prior_goal_state
-
+    # GSTL uses ASL + PEL signals
     gstl = await run_gstl(
         utterance=utterance,
         job_role=job_role,
         question_text=question_text,
-        prior_goal_state=prior_gs,
+        prior_goal_state=prior_goal_state,
         interaction_history=interaction_history,
+        asl=asl,
+        pel=pel,
     )
 
+    # IFL fuses all three + longitudinal history
     ifl = await run_ifl(
         asl=asl,
         pel=pel,
@@ -270,6 +300,7 @@ async def run_mlim_pipeline(
         utterance=utterance,
         question_text=question_text,
         job_role=job_role,
+        longitudinal_history=interaction_history,
     )
 
     return MLIMAnalysis(
@@ -280,4 +311,6 @@ async def run_mlim_pipeline(
         pel=pel,
         gstl=gstl,
         ifl=ifl,
+        face_snapshot=face_snapshot,
+        voice_features=voice_features,
     )
