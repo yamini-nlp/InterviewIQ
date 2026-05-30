@@ -22,3 +22,4 @@ class Report(BaseModel):
     integrity_summary: Dict[str, Any] = {}
     total_questions: int = 0
     completed_questions: int = 0
+    hiring_recommendation: Optional[str] = None

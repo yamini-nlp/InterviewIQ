@@ -28,13 +28,21 @@ async def call_groq(
     last_error = None
     for attempt in range(retries):
         try:
-            response = await client.chat.completions.create(
-                model=model,
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=max_tokens,
-                temperature=temperature,
+            response = await asyncio.wait_for(
+                client.chat.completions.create(
+                    model=model,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                ),
+                timeout=30.0,
             )
             return response.choices[0].message.content
+        except asyncio.TimeoutError:
+            last_error = Exception(f"Groq call timed out after 30s on attempt {attempt + 1}")
+            logger.warning(f"Groq timeout on attempt {attempt + 1} (model={model})")
+            if attempt < retries - 1:
+                await asyncio.sleep(1.0)
         except Exception as e:
             last_error = e
             err_str = str(e).lower()
@@ -45,11 +53,16 @@ async def call_groq(
     raise last_error
 
 
-async def call_groq_json(prompt: str, max_tokens: int = 2048, retries: int = 3) -> dict:
+async def call_groq_json(
+    prompt: str,
+    max_tokens: int = 2048,
+    retries: int = 3,
+    model: str = "llama-3.3-70b-versatile",
+) -> dict:
     last_error = None
     for attempt in range(retries):
         try:
-            raw = await call_groq(prompt, max_tokens=max_tokens, temperature=0.3)
+            raw = await call_groq(prompt, model=model, max_tokens=max_tokens, temperature=0.3)
             cleaned = re.sub(r"```json\s*|\s*```", "", raw).strip()
             match = re.search(r"\{.*\}", cleaned, re.DOTALL)
             if match:
@@ -67,9 +80,15 @@ async def call_groq_json(prompt: str, max_tokens: int = 2048, retries: int = 3) 
 
 async def transcribe_audio(audio_bytes: bytes, filename: str = "audio.webm") -> str:
     client = get_groq_client()
-    transcription = await client.audio.transcriptions.create(
-        file=(filename, audio_bytes, "audio/webm"),
-        model="whisper-large-v3",
-        language="en",
-    )
-    return transcription.text
+    try:
+        transcription = await asyncio.wait_for(
+            client.audio.transcriptions.create(
+                file=(filename, audio_bytes, "audio/webm"),
+                model="whisper-large-v3",
+                language="en",
+            ),
+            timeout=60.0,
+        )
+        return transcription.text
+    except asyncio.TimeoutError:
+        raise Exception("Audio transcription timed out after 60s")

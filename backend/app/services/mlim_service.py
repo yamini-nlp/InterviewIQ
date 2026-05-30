@@ -8,14 +8,21 @@ from app.models.mlim import (
     GoalState, InteractionEntry, SpeechActType, IntentLabel,
 )
 
+FAST_MODEL = "llama-3.1-8b-instant"
+REASONING_MODEL = "llama-3.3-70b-versatile"
 
-async def run_asl(utterance: str, face_snapshot: Optional[dict] = None, voice_features: Optional[dict] = None) -> ASLOutput:
+
+async def run_asl(
+    utterance: str,
+    face_snapshot: Optional[dict] = None,
+    voice_features: Optional[dict] = None,
+) -> ASLOutput:
     face_str = ""
     if face_snapshot:
         dominant = face_snapshot.get("dominantExpression", "neutral")
         confidence = face_snapshot.get("confidence", 0)
         face_str = f"\nFacial expression data: dominant={dominant} (confidence={confidence:.2f})"
-    
+
     voice_str = ""
     if voice_features:
         voice_str = f"\nVoice features: pace={voice_features.get('pace', 'unknown')}, energy={voice_features.get('energy', 0):.2f}"
@@ -34,7 +41,8 @@ Respond ONLY in this exact JSON format:
   "affective_masking_detected": <boolean, true if surface affect likely misrepresents underlying state>,
   "masking_reason": "<brief explanation if masking detected, else null>"
 }}"""
-    data = await call_groq_json(prompt)
+
+    data = await call_groq_json(prompt, model=FAST_MODEL)
     return ASLOutput(
         sentiment=data.get("sentiment", "neutral"),
         sentiment_confidence=float(data.get("sentiment_confidence", 0.5)),
@@ -47,7 +55,12 @@ Respond ONLY in this exact JSON format:
 
 
 async def run_pel(utterance: str, context: List[str]) -> PELOutput:
-    context_str = "\n".join([f"Turn {i+1}: {u}" for i, u in enumerate(context[-5:])]) if context else "No prior context."
+    context_str = (
+        "\n".join([f"Turn {i+1}: {u}" for i, u in enumerate(context[-5:])])
+        if context
+        else "No prior context."
+    )
+
     prompt = f"""You are a computational pragmatics system implementing speech act theory (Austin/Searle).
 
 Recent conversation context:
@@ -73,7 +86,8 @@ Analyze the illocutionary force and pragmatic features. Respond ONLY in this exa
   "gricean_implicature": "<what the utterance implies beyond its literal content>",
   "pragmatic_context_label": "<one phrase describing the pragmatic situation>"
 }}"""
-    data = await call_groq_json(prompt)
+
+    data = await call_groq_json(prompt, model=FAST_MODEL)
     ilf = data.get("illocutionary_force_features", {})
     return PELOutput(
         primary_speech_act=data.get("primary_speech_act", "representative"),
@@ -111,7 +125,8 @@ async def run_gstl(
 - Confidence level: {prior_goal_state.confidence_level:.2f}
 - Goal drift detected: {prior_goal_state.goal_drift_detected}
 - Dominant goal: {prior_goal_state.dominant_goal}
-- Session trajectory: {prior_goal_state.session_trajectory}"""
+- Session trajectory: {prior_goal_state.session_trajectory}
+- Previous hiring readiness signal: {prior_goal_state.hiring_readiness_signal or "unknown"}"""
 
     prompt = f"""You are a POMDP belief-state estimator tracking user goals in an AI interview coaching system.
 
@@ -143,20 +158,33 @@ Estimate the user's current goal state. Respond ONLY in this exact JSON format:
   "engagement_level": <float 0.0-1.0>,
   "stress_indicators": <float 0.0-1.0>,
   "readiness_estimate": <float 0.0-1.0>,
-  "recommended_system_action": "encourage|challenge|clarify|simplify|validate|escalate_difficulty"
+  "recommended_system_action": "encourage|challenge|clarify|simplify|validate|escalate_difficulty",
+  "hiring_readiness_signal": "strong_yes|lean_yes|neutral|lean_no|strong_no"
 }}
 
-Note: goal_belief_distribution values must sum to 1.0"""
-    data = await call_groq_json(prompt)
+Note: goal_belief_distribution values must sum to 1.0
+Note: hiring_readiness_signal should reflect the candidate's demonstrated readiness to be hired for the role based on all signals observed so far."""
+
+    data = await call_groq_json(prompt, model=REASONING_MODEL)
+
     belief_dist = data.get("goal_belief_distribution", {})
-    
-    # Server-side normalization
     total = sum(belief_dist.values()) if belief_dist else 0
     if total > 0 and abs(total - 1.0) > 0.01:
         belief_dist = {k: v / total for k, v in belief_dist.items()}
     elif not belief_dist:
-        belief_dist = {"demonstrate_competence": 0.2, "seek_feedback": 0.2, "pass_screening": 0.2, "build_confidence": 0.2, "explore_role": 0.2}
-    
+        belief_dist = {
+            "demonstrate_competence": 0.2,
+            "seek_feedback": 0.2,
+            "pass_screening": 0.2,
+            "build_confidence": 0.2,
+            "explore_role": 0.2,
+        }
+
+    hiring_signal = data.get("hiring_readiness_signal", "neutral")
+    valid_signals = {"strong_yes", "lean_yes", "neutral", "lean_no", "strong_no"}
+    if hiring_signal not in valid_signals:
+        hiring_signal = "neutral"
+
     return GSTLOutput(
         dominant_goal=data.get("dominant_goal", "unclear"),
         goal_belief_distribution=belief_dist,
@@ -167,6 +195,7 @@ Note: goal_belief_distribution values must sum to 1.0"""
         stress_indicators=float(data.get("stress_indicators", 0.3)),
         readiness_estimate=float(data.get("readiness_estimate", 0.5)),
         recommended_system_action=data.get("recommended_system_action", "encourage"),
+        hiring_readiness_signal=hiring_signal,
     )
 
 
@@ -214,6 +243,7 @@ Layer 3 - Goal State (GSTL):
 - Engagement: {gstl.engagement_level:.2f}
 - Stress: {gstl.stress_indicators:.2f}
 - Recommended action: {gstl.recommended_system_action}
+- Hiring readiness signal: {gstl.hiring_readiness_signal or "neutral"}
 
 Produce the final intent prediction. Respond ONLY in this exact JSON format:
 {{
@@ -237,7 +267,8 @@ Produce the final intent prediction. Respond ONLY in this exact JSON format:
 }}
 
 Note: intent_distribution values must sum to 1.0"""
-    data = await call_groq_json(prompt)
+
+    data = await call_groq_json(prompt, model=REASONING_MODEL)
 
     dist = data.get("intent_distribution", {})
     if not dist:
@@ -254,7 +285,7 @@ Note: intent_distribution values must sum to 1.0"""
         intent_label=data.get("intent_label", "genuine_answer"),
         intent_confidence=float(data.get("intent_confidence", 0.5)),
         intent_distribution=dist,
-        entropy=entropy,  
+        entropy=entropy,
         should_solicit_clarification=should_clarify,
         clarification_prompt=data.get("clarification_prompt"),
         intent_aware_response_modifier=data.get("intent_aware_response_modifier", ""),
