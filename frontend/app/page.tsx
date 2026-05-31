@@ -99,19 +99,15 @@ export default function Home() {
     <div className="min-h-screen bg-[#07080b] overflow-x-hidden" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <Navbar />
 
-      {/* ── HERO ── */}
       <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-20 pb-24 overflow-hidden">
-        {/* Background grid */}
         <div className="absolute inset-0 pointer-events-none" style={{
           backgroundImage: "linear-gradient(rgba(108,99,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(108,99,255,0.04) 1px, transparent 1px)",
           backgroundSize: "64px 64px",
         }} />
-        {/* Radial glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[600px] rounded-full pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(108,99,255,0.09) 0%, transparent 70%)" }} />
         <div className="absolute top-1/3 left-1/3 w-[400px] h-[400px] rounded-full pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(139,133,255,0.05) 0%, transparent 70%)" }} />
 
         <div className="relative z-10 max-w-5xl mx-auto text-center">
-          {/* Eyebrow */}
           <div className="inline-flex items-center gap-2.5 mb-8 px-4 py-2 rounded-full border" style={{ borderColor: "rgba(108,99,255,0.25)", background: "rgba(108,99,255,0.07)" }}>
             <span className="w-1.5 h-1.5 rounded-full bg-[#6c63ff] animate-pulse" />
             <span className="text-[11px] font-mono font-semibold tracking-[0.18em] uppercase" style={{ color: "#a78bfa" }}>
@@ -119,7 +115,6 @@ export default function Home() {
             </span>
           </div>
 
-          {/* Headline */}
           <h1 style={{ fontFamily: "'Syne', sans-serif" }} className="font-extrabold leading-[1.05] tracking-tight mb-6">
             <span className="block text-white" style={{ fontSize: "clamp(3rem, 7vw, 5.5rem)" }}>The AI interview coach</span>
             <span className="block" style={{
@@ -129,12 +124,10 @@ export default function Home() {
             }}>that reads intent.</span>
           </h1>
 
-          {/* Sub */}
           <p className="text-lg leading-relaxed mb-10 max-w-2xl mx-auto" style={{ color: "#9ca3af" }}>
             Not just what you say — but what you <em className="not-italic" style={{ color: "#e5e7eb" }}>mean</em>. Four analytical layers process every answer to detect goals, emotional state, pragmatic intent, and behavioral consistency in real time.
           </p>
 
-          {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
             <Link href="/register">
               <button className="group flex items-center gap-2.5 px-8 py-3.5 rounded-xl font-semibold text-white transition-all duration-200 hover:-translate-y-0.5" style={{ background: "linear-gradient(135deg, #6c63ff, #8b85ff)", boxShadow: "0 0 32px rgba(108,99,255,0.35), 0 4px 16px rgba(0,0,0,0.4)" }}>
@@ -149,7 +142,6 @@ export default function Home() {
             </Link>
           </div>
 
-          {/* Stat pills */}
           <div className="flex flex-wrap items-center justify-center gap-3">
             {[
               { v: "4", l: "MLIM Layers" }, { v: "8", l: "Intent Labels" },
@@ -163,22 +155,22 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Scroll hint */}
         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-bounce">
           <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "#374151" }}>Scroll</span>
           <ChevronDown size={14} style={{ color: "#374151" }} />
         </div>
       </section>
 
-      {/* ── MLIM PIPELINE ── */}
       <section className="py-28 px-6 max-w-7xl mx-auto">
         <div className="grid lg:grid-cols-2 gap-16 items-start">
-          {/* Left — text */}
           <div className="lg:sticky lg:top-28">
             <span className="text-[10px] font-mono uppercase tracking-[0.2em] block mb-5" style={{ color: "#6c63ff" }}>Architecture</span>
-            <h2 style={{ fontFamily: "'Syne', sans-serif" }} className="font-bold text-white mb-5 leading-tight" style2={{ fontSize: "clamp(1.8rem, 3vw, 2.5rem)" }}>
-              <span className="block" style={{ fontSize: "clamp(1.8rem, 3vw, 2.5rem)", fontFamily: "'Syne', sans-serif" }}>The 4-Layer</span>
-              <span className="block" style={{ fontSize: "clamp(1.8rem, 3vw, 2.5rem)", fontFamily: "'Syne', sans-serif", color: "#6c63ff" }}>Intent Pipeline</span>
+            <h2
+              className="font-bold text-white mb-5 leading-tight"
+              style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(1.8rem, 3vw, 2.5rem)" }}
+            >
+              <span className="block">The 4-Layer</span>
+              <span className="block" style={{ color: "#6c63ff" }}>Intent Pipeline</span>
             </h2>
             <p className="leading-relaxed mb-8" style={{ color: "#6b7280", fontSize: "0.95rem" }}>
               Each answer passes through all four layers sequentially. ASL and PEL run in parallel, then GSTL updates the belief state, and IFL fuses everything into a final intent prediction with entropy-based uncertainty scoring.
@@ -200,7 +192,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Right — layer cards */}
           <div className="space-y-3">
             {mlimLayers.map((layer, i) => {
               const active = activeLayer === i;
@@ -208,7 +199,7 @@ export default function Home() {
                 <div
                   key={layer.id}
                   onClick={() => setActiveLayer(i)}
-                  className="rounded-2xl p-5 cursor-pointer transition-all duration-400"
+                  className="rounded-2xl p-5 cursor-pointer transition-all duration-300"
                   style={{
                     background: active ? `linear-gradient(135deg, ${layer.color}0a 0%, rgba(255,255,255,0.02) 100%)` : "rgba(255,255,255,0.02)",
                     border: `1px solid ${active ? layer.color + "30" : "rgba(255,255,255,0.06)"}`,
@@ -231,7 +222,7 @@ export default function Home() {
                         {active && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: layer.color }} />}
                       </div>
                       {active && (
-                        <div className="animate-fade-in">
+                        <div>
                           <p className="text-xs leading-relaxed mb-3" style={{ color: "#6b7280" }}>{layer.desc}</p>
                           <div className="flex flex-wrap gap-1.5">
                             {layer.tags.map((tag) => (
@@ -248,7 +239,6 @@ export default function Home() {
               );
             })}
 
-            {/* Output card */}
             <div className="rounded-2xl p-4 mt-2" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
               <div className="flex items-center gap-2 mb-3">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#6c63ff] animate-pulse" />
@@ -270,12 +260,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── DIVIDER ── */}
       <div className="max-w-7xl mx-auto px-6">
         <div style={{ height: "1px", background: "linear-gradient(90deg, transparent, rgba(108,99,255,0.2), transparent)" }} />
       </div>
 
-      {/* ── CAPABILITIES ── */}
       <section className="py-28 px-6 max-w-7xl mx-auto">
         <div className="max-w-2xl mb-16">
           <span className="text-[10px] font-mono uppercase tracking-[0.2em] block mb-5" style={{ color: "#6c63ff" }}>Capabilities</span>
@@ -288,9 +276,9 @@ export default function Home() {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-px" style={{ background: "rgba(255,255,255,0.06)", borderRadius: "1.25rem", overflow: "hidden" }}>
-          {capabilities.map((cap, i) => (
+          {capabilities.map((cap) => (
             <div key={cap.title} className="group p-7 transition-all duration-300 hover:z-10 relative" style={{ background: "#07080b" }}>
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-none" style={{ background: `radial-gradient(ellipse at 30% 30%, ${cap.accent}08, transparent 70%)` }} />
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" style={{ background: `radial-gradient(ellipse at 30% 30%, ${cap.accent}08, transparent 70%)` }} />
               <div className="relative">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-5" style={{ background: `${cap.accent}15`, border: `1px solid ${cap.accent}20` }}>
                   <cap.icon size={15} style={{ color: cap.accent }} />
@@ -303,12 +291,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── DIVIDER ── */}
       <div className="max-w-7xl mx-auto px-6">
         <div style={{ height: "1px", background: "linear-gradient(90deg, transparent, rgba(108,99,255,0.2), transparent)" }} />
       </div>
 
-      {/* ── HOW IT WORKS ── */}
       <section className="py-28 px-6 max-w-5xl mx-auto">
         <div className="text-center mb-16">
           <span className="text-[10px] font-mono uppercase tracking-[0.2em] block mb-5" style={{ color: "#6c63ff" }}>Process</span>
@@ -325,7 +311,7 @@ export default function Home() {
             { n: "04", title: "MLIM pipeline processes", desc: "ASL and PEL run in parallel. GSTL updates the goal belief state. IFL fuses all signals with longitudinal history into a final intent prediction.", color: "#34d399" },
             { n: "05", title: "Live analytics refresh", desc: "The analytics sidebar updates with emotion vectors, intent distribution, goal drift indicators, stress scores, and entropy confidence after every answer.", color: "#fb923c" },
             { n: "06", title: "Report generated", desc: "Your session closes with a full breakdown: per-question MLIM analysis, intent history, failure modes detected, session trajectory, and integrity score.", color: "#f472b6" },
-          ].map((step, i) => (
+          ].map((step) => (
             <div key={step.n} className="flex gap-5 p-6 rounded-2xl transition-all duration-200 hover:border-white/10" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
               <div className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center font-mono font-bold text-xs" style={{ background: `${step.color}15`, border: `1px solid ${step.color}25`, color: step.color }}>
                 {step.n}
@@ -339,7 +325,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── METRICS BAND ── */}
       <section className="py-20 px-6" style={{ background: "rgba(255,255,255,0.02)", borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
         <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           {[
@@ -359,7 +344,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── FAQ ── */}
       <section className="py-28 px-6 max-w-3xl mx-auto">
         <div className="text-center mb-14">
           <span className="text-[10px] font-mono uppercase tracking-[0.2em] block mb-5" style={{ color: "#6c63ff" }}>FAQ</span>
@@ -373,7 +357,7 @@ export default function Home() {
                 <ChevronDown size={15} className={`flex-shrink-0 transition-transform duration-200 ${openFaq === i ? "rotate-180" : ""}`} style={{ color: "#4b5563" }} />
               </button>
               {openFaq === i && (
-                <div className="px-6 pb-5 animate-fade-in">
+                <div className="px-6 pb-5">
                   <p className="text-sm leading-relaxed" style={{ color: "#9ca3af" }}>{faq.a}</p>
                 </div>
               )}
@@ -382,7 +366,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── CTA ── */}
       <section className="py-20 px-6 max-w-5xl mx-auto">
         <div className="relative rounded-2xl p-14 text-center overflow-hidden" style={{ background: "rgba(108,99,255,0.04)", border: "1px solid rgba(108,99,255,0.15)" }}>
           <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(108,99,255,0.1), transparent 70%)" }} />
@@ -413,7 +396,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── FOOTER ── */}
       <footer style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }} className="py-12 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8 mb-10">
