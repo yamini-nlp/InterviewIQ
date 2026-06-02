@@ -12,8 +12,18 @@ from app.core.rate_limiter import check_rate_limit
 from app.config import settings
 from datetime import datetime, timezone, timedelta
 import uuid
+import re
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+
+def validate_password(password: str) -> None:
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    if not re.search(r"[A-Z]", password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one uppercase letter")
+    if not re.search(r"[0-9]", password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one number")
 
 
 class RegisterRequest(BaseModel):
@@ -39,11 +49,7 @@ async def register(req: RegisterRequest, request: Request):
         limit=10,
         window_seconds=3600,
     )
-    if len(req.password) < 8:
-        raise HTTPException(
-            status_code=400,
-            detail="Password must be at least 8 characters",
-        )
+    validate_password(req.password)
     db = get_db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database unavailable")
@@ -66,9 +72,7 @@ async def register(req: RegisterRequest, request: Request):
     )
     access = create_access_token(user_id)
     refresh, jti = create_refresh_token(user_id)
-    expire_at = datetime.now(timezone.utc) + timedelta(
-        days=settings.refresh_token_expire_days
-    )
+    expire_at = datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days)
     await db.refresh_tokens.insert_one(
         {"jti": jti, "user_id": user_id, "expires_at": expire_at}
     )
@@ -104,9 +108,7 @@ async def login(req: LoginRequest, request: Request):
     )
     access = create_access_token(user["id"])
     refresh, jti = create_refresh_token(user["id"])
-    expire_at = datetime.now(timezone.utc) + timedelta(
-        days=settings.refresh_token_expire_days
-    )
+    expire_at = datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days)
     await db.refresh_tokens.insert_one(
         {"jti": jti, "user_id": user["id"], "expires_at": expire_at}
     )
@@ -132,21 +134,13 @@ async def refresh(req: RefreshRequest):
     jti = payload.get("jti")
     stored = await db.refresh_tokens.find_one({"jti": jti})
     if not stored:
-        raise HTTPException(
-            status_code=401, detail="Refresh token revoked or not found"
-        )
+        raise HTTPException(status_code=401, detail="Refresh token revoked or not found")
     await db.refresh_tokens.delete_one({"jti": jti})
     new_access = create_access_token(payload["sub"])
     new_refresh, new_jti = create_refresh_token(payload["sub"])
-    expire_at = datetime.now(timezone.utc) + timedelta(
-        days=settings.refresh_token_expire_days
-    )
+    expire_at = datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days)
     await db.refresh_tokens.insert_one(
-        {
-            "jti": new_jti,
-            "user_id": payload["sub"],
-            "expires_at": expire_at,
-        }
+        {"jti": new_jti, "user_id": payload["sub"], "expires_at": expire_at}
     )
     return {"access_token": new_access, "refresh_token": new_refresh}
 

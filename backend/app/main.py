@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from contextlib import asynccontextmanager
 from app.database import connect_db, close_db
 from app.core.redis_client import connect_redis, close_redis
@@ -25,9 +26,14 @@ async def lifespan(app: FastAPI):
     await close_redis()
 
 
-app = FastAPI(title="RoleReady API", version="3.2.0", lifespan=lifespan)
+app = FastAPI(title="PrepVision API", version="3.2.0", lifespan=lifespan)
 
 origins = [o.strip() for o in settings.allowed_origins.split(",")]
+
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["localhost", "127.0.0.1", "prepvision.ai", "api.prepvision.ai", "*"],
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -36,6 +42,18 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept"],
 )
+
+
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    response: Response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    return response
+
 
 app.include_router(auth_router)
 app.include_router(questions.router)
