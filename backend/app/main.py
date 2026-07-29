@@ -2,18 +2,19 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from contextlib import asynccontextmanager
+import uuid
+import logging
+
 from app.database import connect_db, close_db
 from app.core.redis_client import connect_redis, close_redis
+from app.core.logging_config import configure_logging, set_request_id, set_user_id
+from app.core.exceptions import register_exception_handlers
 from app.routers import questions, evaluate, simulate, reports, integrity
 from app.routers import mlim, stream
 from app.auth.router import router as auth_router
 from app.config import settings
-import logging
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s %(message)s",
-)
+configure_logging()
 logger = logging.getLogger(__name__)
 
 
@@ -27,6 +28,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="PrepVision API", version="3.2.0", lifespan=lifespan)
+
+register_exception_handlers(app)
 
 origins = [o.strip() for o in settings.allowed_origins.split(",")]
 
@@ -42,6 +45,16 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept"],
 )
+
+
+@app.middleware("http")
+async def request_context_middleware(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    set_request_id(request_id)
+    set_user_id(None)
+    response: Response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
 
 
 @app.middleware("http")

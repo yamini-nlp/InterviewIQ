@@ -24,11 +24,3 @@ Respond exactly as a real interviewer would:
 - Examples: "Noted.", "I see.", "Thank you.", "Alright.", "Got it."
 
 Return ONLY the acknowledgment, nothing else."""
-
-
-def build_followup_prompt(question_text: str, answer_text: str) -> str:
-    return f"""You are a strict professional interviewer. The candidate answered: "{answer_text}" to the question: "{question_text}".
-
-Decide if a brief follow-up probing question is warranted (30% of the time say yes). If yes, write ONE short follow-up question. If no, respond with "MOVE_ON".
-
-Return ONLY the follow-up question or "MOVE_ON"."""

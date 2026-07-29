@@ -4,6 +4,9 @@ from app.services.evaluation_service import evaluate_answer
 from app.models.session import Answer
 from app.database import get_db
 from app.auth.dependencies import get_current_user
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/evaluate", tags=["evaluate"])
 
@@ -34,7 +37,7 @@ async def evaluate(request: EvaluateAnswerRequest, current_user: dict = Depends(
         except HTTPException:
             raise
         except Exception as db_error:
-            print(f"DB save skipped: {db_error}")
+            logger.warning(f"DB save skipped for session {request.session_id}: {db_error}")
 
         return feedback.model_dump()
     except HTTPException:

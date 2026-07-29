@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
 
 
@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     rate_limit_window_seconds: int = 60
     redis_url: str = "redis://localhost:6379"
 
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
+
     @field_validator("jwt_secret")
     @classmethod
     def jwt_secret_must_be_strong(cls, v: str) -> str:
@@ -30,9 +32,6 @@ class Settings(BaseSettings):
         if not v or v.strip() == "":
             raise ValueError("GROQ_API_KEY is required")
         return v
-
-    class Config:
-        env_file = ".env"
 
 
 settings = Settings()

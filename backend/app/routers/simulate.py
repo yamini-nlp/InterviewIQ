@@ -6,6 +6,9 @@ from app.database import get_db
 from app.auth.dependencies import get_current_user
 from pydantic import BaseModel
 from typing import Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/simulate", tags=["simulate"])
 
@@ -53,7 +56,7 @@ Rephrase it naturally as a real interviewer would ask it. Return ONLY the rephra
                     {"$push": {"answers": answer.model_dump()}},
                 )
             except Exception as db_error:
-                print(f"DB save skipped: {db_error}")
+                logger.warning(f"DB save skipped for session {request.session_id}: {db_error}")
 
         return {"response": response.strip()}
     except HTTPException:

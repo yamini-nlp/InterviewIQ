@@ -17,10 +17,3 @@ class EvaluateAnswerRequest(BaseModel):
     question_difficulty: str
     answer_text: str = Field(..., max_length=5000)
     job_role: str = Field(..., max_length=200)
-
-
-class SimulateRequest(BaseModel):
-    session_id: str
-    question_text: str = Field(..., max_length=2000)
-    answer_text: str = Field(..., max_length=5000)
-    interviewer_style: str = "professional"

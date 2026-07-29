@@ -7,6 +7,9 @@ from app.models.session import SessionMode
 from app.auth.dependencies import get_current_user
 from datetime import datetime
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/questions", tags=["questions"])
 
@@ -43,7 +46,7 @@ async def generate(request: GenerateQuestionsRequest, current_user: dict = Depen
             if db is not None:
                 await db.sessions.insert_one(session_data.copy())
         except Exception as db_error:
-            print(f"DB save skipped: {db_error}")
+            logger.warning(f"DB save skipped for session {session_id}: {db_error}")
 
         return {"session_id": session_id, "questions": [q.model_dump() for q in questions]}
     except Exception as e:

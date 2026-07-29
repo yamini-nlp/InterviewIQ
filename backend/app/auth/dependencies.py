@@ -2,6 +2,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.auth.service import decode_token
 from app.database import get_db
+from app.core.logging_config import set_user_id
 
 bearer = HTTPBearer()
 
@@ -19,4 +20,5 @@ async def get_current_user(
     user = await db.users.find_one({"id": payload["sub"]}, {"_id": 0})
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    set_user_id(user["id"])
     return user

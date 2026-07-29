@@ -5,6 +5,9 @@ from app.database import get_db
 from app.models.session import Session, Feedback, Answer
 from app.auth.dependencies import get_current_user
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 
@@ -21,7 +24,7 @@ async def generate(session_id: str, current_user: dict = Depends(get_current_use
                 if data:
                     data.pop("_id", None)
             except Exception as db_err:
-                print(f"DB read failed: {db_err}")
+                logger.warning(f"DB read failed for session {session_id}: {db_err}")
 
         if not data:
             raise HTTPException(status_code=404, detail="Session not found")
@@ -47,7 +50,7 @@ async def generate(session_id: str, current_user: dict = Depends(get_current_use
                         )
                         feedbacks.append(fb)
                     except Exception as eval_err:
-                        print(f"Eval error for Q{i}: {eval_err}")
+                        logger.warning(f"Eval error for Q{i} in session {session_id}: {eval_err}")
                         feedbacks.append(Feedback(
                             question_id=q.id,
                             correctness="Partially Correct",
@@ -91,7 +94,7 @@ async def generate(session_id: str, current_user: dict = Depends(get_current_use
                         "sarcasm_count": sum(1 for d in mlim_docs if d.get("pel", {}).get("sarcasm_detected")),
                     }
             except Exception as e:
-                print(f"MLIM summary skipped: {e}")
+                logger.warning(f"MLIM summary skipped for session {session_id}: {e}")
 
         report = await generate_report(session)
         report.user_id = current_user["id"]
@@ -119,7 +122,7 @@ async def generate(session_id: str, current_user: dict = Depends(get_current_use
                 else:
                     await db.reports.insert_one(report.model_dump())
             except Exception as db_error:
-                print(f"DB save skipped: {db_error}")
+                logger.warning(f"DB save skipped for report {session_id}: {db_error}")
 
         return report.model_dump()
     except HTTPException:
@@ -141,7 +144,7 @@ async def get_sessions(current_user: dict = Depends(get_current_user)):
                 sessions = await cursor.to_list(length=50)
                 return {"sessions": sessions}
             except Exception as db_error:
-                print(f"DB read skipped: {db_error}")
+                logger.warning(f"DB read skipped for sessions list: {db_error}")
         return {"sessions": []}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -160,7 +163,7 @@ async def get_report(session_id: str, current_user: dict = Depends(get_current_u
                 if data:
                     return data
             except Exception as db_error:
-                logger.error(f"DB read error: {db_error}")
+                logger.error(f"DB read error for report {session_id}: {db_error}")
                 raise HTTPException(status_code=503, detail="Database error")
         raise HTTPException(status_code=404, detail="Report not found. Generate it first via POST /api/reports/generate/{session_id}")
     except HTTPException:

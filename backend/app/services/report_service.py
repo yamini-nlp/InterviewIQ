@@ -64,8 +64,8 @@ Scoring guide for hiring_recommendation:
     for q, a, f in zip(session.questions, session.answers, feedbacks):
         question_breakdown.append({
             "question": q.text,
-            "category": q.category,
-            "difficulty": q.difficulty,
+            "category": q.category.value,
+            "difficulty": q.difficulty.value,
             "answer": a.text,
             "score": f.score,
             "correctness": f.correctness,
