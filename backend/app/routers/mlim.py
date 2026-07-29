@@ -16,10 +16,13 @@ router = APIRouter(prefix="/api/mlim", tags=["mlim"])
 async def analyze(request: MLIMAnalyzeRequest, current_user: dict = Depends(get_current_user)):
     try:
         db = get_db()
+        belief_history: List[Dict[str, float]] = []
         if db is not None:
             session = await db.sessions.find_one({"id": request.session_id})
             if session and session.get("user_id") != current_user["id"]:
                 raise HTTPException(status_code=403, detail="Access denied")
+            if session:
+                belief_history = session.get("goal_belief_history", []) or []
 
         result = await run_mlim_pipeline(
             utterance=request.answer_text,
@@ -31,6 +34,7 @@ async def analyze(request: MLIMAnalyzeRequest, current_user: dict = Depends(get_
             prior_goal_state=request.prior_goal_state,
             face_snapshot=request.face_snapshot,
             voice_features=request.voice_features,
+            belief_history=belief_history,
         )
 
         if db is not None:
@@ -39,6 +43,13 @@ async def analyze(request: MLIMAnalyzeRequest, current_user: dict = Depends(get_
             if doc.get("timestamp") and hasattr(doc["timestamp"], "isoformat"):
                 doc["timestamp"] = doc["timestamp"].isoformat()
             await db.mlim_analyses.insert_one(doc)
+
+            if session:
+                updated_history = (belief_history + [result.gstl.goal_belief_distribution])[-50:]
+                await db.sessions.update_one(
+                    {"id": request.session_id},
+                    {"$set": {"goal_belief_history": updated_history}},
+                )
 
         return result.model_dump()
     except HTTPException:
@@ -141,4 +152,4 @@ async def get_analyses(session_id: str, current_user: dict = Depends(get_current
         analyses = await cursor.to_list(length=200)
         return {"analyses": analyses}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))

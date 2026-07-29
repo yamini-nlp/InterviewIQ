@@ -1,11 +1,12 @@
-import json
 import math
-import asyncio
-from typing import List, Optional
+from typing import List, Optional, Dict
 from app.services.groq_service import call_groq_json
+from app.services.mlim.asl import compute_asl
+from app.services.mlim.pel import compute_pel
+from app.services.mlim.gstl import compute_gstl
 from app.models.mlim import (
     ASLOutput, PELOutput, GSTLOutput, IFLOutput, MLIMAnalysis,
-    GoalState, InteractionEntry, SpeechActType, IntentLabel,
+    GoalState, InteractionEntry,
 )
 
 FAST_MODEL = "llama-3.1-8b-instant"
@@ -17,93 +18,11 @@ async def run_asl(
     face_snapshot: Optional[dict] = None,
     voice_features: Optional[dict] = None,
 ) -> ASLOutput:
-    face_str = ""
-    if face_snapshot:
-        dominant = face_snapshot.get("dominantExpression", "neutral")
-        confidence = face_snapshot.get("confidence", 0)
-        face_str = f"\nFacial expression data: dominant={dominant} (confidence={confidence:.2f})"
-
-    voice_str = ""
-    if voice_features:
-        voice_str = f"\nVoice features: pace={voice_features.get('pace', 'unknown')}, energy={voice_features.get('energy', 0):.2f}"
-
-    prompt = f"""You are an affective computing system. Analyze this utterance for sentiment and dimensional affect.
-
-Utterance: "{utterance}"{face_str}{voice_str}
-
-Respond ONLY in this exact JSON format:
-{{
-  "sentiment": "positive|negative|neutral",
-  "sentiment_confidence": <float 0.0-1.0>,
-  "valence": <float -1.0 to 1.0, where -1=very negative, 1=very positive>,
-  "arousal": <float 0.0-1.0, where 0=calm, 1=highly activated>,
-  "uncertainty_s": <float 0.0-1.0, how uncertain is the sentiment classification>,
-  "affective_masking_detected": <boolean, true if surface affect likely misrepresents underlying state>,
-  "masking_reason": "<brief explanation if masking detected, else null>"
-}}"""
-
-    data = await call_groq_json(prompt, model=FAST_MODEL)
-    return ASLOutput(
-        sentiment=data.get("sentiment", "neutral"),
-        sentiment_confidence=float(data.get("sentiment_confidence", 0.5)),
-        valence=float(data.get("valence", 0.0)),
-        arousal=float(data.get("arousal", 0.5)),
-        uncertainty_s=float(data.get("uncertainty_s", 0.5)),
-        affective_masking_detected=bool(data.get("affective_masking_detected", False)),
-        masking_reason=data.get("masking_reason"),
-    )
+    return await compute_asl(utterance, face_snapshot, voice_features)
 
 
-async def run_pel(utterance: str, context: List[str]) -> PELOutput:
-    context_str = (
-        "\n".join([f"Turn {i+1}: {u}" for i, u in enumerate(context[-5:])])
-        if context
-        else "No prior context."
-    )
-
-    prompt = f"""You are a computational pragmatics system implementing speech act theory (Austin/Searle).
-
-Recent conversation context:
-{context_str}
-
-Current utterance: "{utterance}"
-
-Analyze the illocutionary force and pragmatic features. Respond ONLY in this exact JSON format:
-{{
-  "primary_speech_act": "directive|expressive|commissive|representative|declarative|interrogative",
-  "speech_act_confidence": <float 0.0-1.0>,
-  "secondary_speech_acts": ["act1", "act2"],
-  "sarcasm_detected": <boolean>,
-  "pragmatic_inversion": <boolean, true if literal sentiment inverted by context>,
-  "illocutionary_force_features": {{
-    "is_requesting_challenge": <boolean>,
-    "is_expressing_frustration": <boolean>,
-    "is_signaling_confusion": <boolean>,
-    "is_face_saving": <boolean>,
-    "is_seeking_validation": <boolean>,
-    "is_committing_to_retry": <boolean>
-  }},
-  "gricean_implicature": "<what the utterance implies beyond its literal content>",
-  "pragmatic_context_label": "<one phrase describing the pragmatic situation>"
-}}"""
-
-    data = await call_groq_json(prompt, model=FAST_MODEL)
-    ilf = data.get("illocutionary_force_features", {})
-    return PELOutput(
-        primary_speech_act=data.get("primary_speech_act", "representative"),
-        speech_act_confidence=float(data.get("speech_act_confidence", 0.5)),
-        secondary_speech_acts=data.get("secondary_speech_acts", []),
-        sarcasm_detected=bool(data.get("sarcasm_detected", False)),
-        pragmatic_inversion=bool(data.get("pragmatic_inversion", False)),
-        is_requesting_challenge=bool(ilf.get("is_requesting_challenge", False)),
-        is_expressing_frustration=bool(ilf.get("is_expressing_frustration", False)),
-        is_signaling_confusion=bool(ilf.get("is_signaling_confusion", False)),
-        is_face_saving=bool(ilf.get("is_face_saving", False)),
-        is_seeking_validation=bool(ilf.get("is_seeking_validation", False)),
-        is_committing_to_retry=bool(ilf.get("is_committing_to_retry", False)),
-        gricean_implicature=data.get("gricean_implicature", ""),
-        pragmatic_context_label=data.get("pragmatic_context_label", ""),
-    )
+async def run_pel(utterance: str, context: List[str], asl: ASLOutput) -> PELOutput:
+    return await compute_pel(utterance, context, asl)
 
 
 async def run_gstl(
@@ -114,88 +33,17 @@ async def run_gstl(
     interaction_history: List[InteractionEntry],
     asl: ASLOutput,
     pel: PELOutput,
+    belief_history: Optional[List[Dict[str, float]]] = None,
 ) -> GSTLOutput:
-    history_str = ""
-    for entry in interaction_history[-4:]:
-        history_str += f"Q: {entry.question}\nA: {entry.answer}\nScore: {entry.score}/10\n\n"
-
-    prior_belief_str = ""
-    if prior_goal_state:
-        prior_belief_str = f"""Prior goal beliefs:
-- Confidence level: {prior_goal_state.confidence_level:.2f}
-- Goal drift detected: {prior_goal_state.goal_drift_detected}
-- Dominant goal: {prior_goal_state.dominant_goal}
-- Session trajectory: {prior_goal_state.session_trajectory}
-- Previous hiring readiness signal: {prior_goal_state.hiring_readiness_signal or "unknown"}"""
-
-    prompt = f"""You are a POMDP belief-state estimator tracking user goals in an AI interview coaching system.
-
-Job Role: {job_role}
-Current Question: "{question_text}"
-Current Utterance: "{utterance}"
-
-Affective signals: valence={asl.valence:.2f}, arousal={asl.arousal:.2f}, sentiment={asl.sentiment}
-Pragmatic signals: speech_act={pel.primary_speech_act}, frustration={pel.is_expressing_frustration}, confusion={pel.is_signaling_confusion}
-
-Interaction History (last 4 turns):
-{history_str if history_str else "No prior interactions."}
-
-{prior_belief_str}
-
-Estimate the user's current goal state. Respond ONLY in this exact JSON format:
-{{
-  "dominant_goal": "demonstrate_competence|seek_feedback|pass_screening|build_confidence|explore_role|unclear",
-  "goal_belief_distribution": {{
-    "demonstrate_competence": <float 0.0-1.0>,
-    "seek_feedback": <float 0.0-1.0>,
-    "pass_screening": <float 0.0-1.0>,
-    "build_confidence": <float 0.0-1.0>,
-    "explore_role": <float 0.0-1.0>
-  }},
-  "confidence_level": <float 0.0-1.0>,
-  "goal_drift_detected": <boolean>,
-  "session_trajectory": "improving|declining|stable|volatile|insufficient_data",
-  "engagement_level": <float 0.0-1.0>,
-  "stress_indicators": <float 0.0-1.0>,
-  "readiness_estimate": <float 0.0-1.0>,
-  "recommended_system_action": "encourage|challenge|clarify|simplify|validate|escalate_difficulty",
-  "hiring_readiness_signal": "strong_yes|lean_yes|neutral|lean_no|strong_no"
-}}
-
-Note: goal_belief_distribution values must sum to 1.0
-Note: hiring_readiness_signal should reflect the candidate's demonstrated readiness to be hired for the role based on all signals observed so far."""
-
-    data = await call_groq_json(prompt, model=REASONING_MODEL)
-
-    belief_dist = data.get("goal_belief_distribution", {})
-    total = sum(belief_dist.values()) if belief_dist else 0
-    if total > 0 and abs(total - 1.0) > 0.01:
-        belief_dist = {k: v / total for k, v in belief_dist.items()}
-    elif not belief_dist:
-        belief_dist = {
-            "demonstrate_competence": 0.2,
-            "seek_feedback": 0.2,
-            "pass_screening": 0.2,
-            "build_confidence": 0.2,
-            "explore_role": 0.2,
-        }
-
-    hiring_signal = data.get("hiring_readiness_signal", "neutral")
-    valid_signals = {"strong_yes", "lean_yes", "neutral", "lean_no", "strong_no"}
-    if hiring_signal not in valid_signals:
-        hiring_signal = "neutral"
-
-    return GSTLOutput(
-        dominant_goal=data.get("dominant_goal", "unclear"),
-        goal_belief_distribution=belief_dist,
-        confidence_level=float(data.get("confidence_level", 0.5)),
-        goal_drift_detected=bool(data.get("goal_drift_detected", False)),
-        session_trajectory=data.get("session_trajectory", "insufficient_data"),
-        engagement_level=float(data.get("engagement_level", 0.5)),
-        stress_indicators=float(data.get("stress_indicators", 0.3)),
-        readiness_estimate=float(data.get("readiness_estimate", 0.5)),
-        recommended_system_action=data.get("recommended_system_action", "encourage"),
-        hiring_readiness_signal=hiring_signal,
+    return await compute_gstl(
+        utterance=utterance,
+        job_role=job_role,
+        question_text=question_text,
+        prior_goal_state=prior_goal_state,
+        interaction_history=interaction_history,
+        asl=asl,
+        pel=pel,
+        belief_history=belief_history,
     )
 
 
@@ -304,11 +152,10 @@ async def run_mlim_pipeline(
     prior_goal_state: Optional[GoalState],
     face_snapshot: Optional[dict] = None,
     voice_features: Optional[dict] = None,
+    belief_history: Optional[List[Dict[str, float]]] = None,
 ) -> MLIMAnalysis:
-    asl, pel = await asyncio.gather(
-        run_asl(utterance, face_snapshot, voice_features),
-        run_pel(utterance, context_utterances),
-    )
+    asl = await run_asl(utterance, face_snapshot, voice_features)
+    pel = await run_pel(utterance, context_utterances, asl)
 
     gstl = await run_gstl(
         utterance=utterance,
@@ -318,6 +165,7 @@ async def run_mlim_pipeline(
         interaction_history=interaction_history,
         asl=asl,
         pel=pel,
+        belief_history=belief_history,
     )
 
     ifl = await run_ifl(

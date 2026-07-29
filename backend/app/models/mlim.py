@@ -11,7 +11,11 @@ class SpeechActType(str, Enum):
     commissive = "commissive"
     representative = "representative"
     declarative = "declarative"
-    interrogative = "interrogative"
+
+
+class SpeechActRoleScore(BaseModel):
+    act: SpeechActType
+    confidence: float
 
 
 class IntentLabel(str, Enum):
@@ -33,12 +37,17 @@ class ASLOutput(BaseModel):
     uncertainty_s: float
     affective_masking_detected: bool
     masking_reason: Optional[str] = None
+    lexicon_sentiment: str
+    lexicon_confidence: float
+    lexicon_llm_disagreement: bool
 
 
 class PELOutput(BaseModel):
     primary_speech_act: str
     speech_act_confidence: float
     secondary_speech_acts: List[str] = []
+    concurrent_speech_acts: List[SpeechActRoleScore] = []
+    is_interrogative: bool = False
     sarcasm_detected: bool
     pragmatic_inversion: bool
     is_requesting_challenge: bool
@@ -47,6 +56,7 @@ class PELOutput(BaseModel):
     is_face_saving: bool
     is_seeking_validation: bool
     is_committing_to_retry: bool
+    maxim_violations: Dict[str, bool] = {}
     gricean_implicature: str
     pragmatic_context_label: str
 
@@ -62,6 +72,8 @@ class GSTLOutput(BaseModel):
     readiness_estimate: float
     recommended_system_action: str
     hiring_readiness_signal: Optional[str] = None
+    belief_update_trace: Dict[str, Any] = {}
+    goal_drift_kl_divergence: float = 0.0
 
 
 class IFLOutput(BaseModel):
@@ -104,6 +116,8 @@ class GoalState(BaseModel):
     readiness_estimate: float
     recommended_system_action: str
     hiring_readiness_signal: Optional[str] = None
+    belief_update_trace: Dict[str, Any] = {}
+    goal_drift_kl_divergence: float = 0.0
 
 
 class InteractionEntry(BaseModel):

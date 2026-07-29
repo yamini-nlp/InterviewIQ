@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Dict
 from datetime import datetime
 from enum import Enum
 import uuid
@@ -57,6 +57,7 @@ class Session(BaseModel):
     answers: List[Answer] = []
     feedbacks: List[Feedback] = []
     integrity_events: List[Any] = []
+    goal_belief_history: List[Dict[str, float]] = []
     created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
     completed_at: Optional[str] = None
     overall_score: Optional[float] = None
