@@ -10,7 +10,7 @@ from app.core.redis_client import connect_redis, close_redis
 from app.core.logging_config import configure_logging, set_request_id, set_user_id
 from app.core.exceptions import register_exception_handlers
 from app.routers import questions, evaluate, simulate, reports, integrity
-from app.routers import mlim, stream
+from app.routers import mlim, stream, privacy
 from app.auth.router import router as auth_router
 from app.config import settings
 
@@ -76,6 +76,7 @@ app.include_router(reports.router)
 app.include_router(mlim.router)
 app.include_router(integrity.router)
 app.include_router(stream.router)
+app.include_router(privacy.router)
 
 
 @app.get("/health")

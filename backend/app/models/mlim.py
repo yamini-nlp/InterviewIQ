@@ -1,8 +1,9 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
 import math
+import uuid
 
 
 class SpeechActType(str, Enum):
@@ -76,19 +77,31 @@ class GSTLOutput(BaseModel):
     goal_drift_kl_divergence: float = 0.0
 
 
+class FeatureAttribution(BaseModel):
+    feature: str
+    value: float
+    weight: float
+    contribution: float
+
+
 class IFLOutput(BaseModel):
     intent_label: str
     intent_confidence: float
     intent_distribution: Dict[str, float]
+    raw_intent_distribution: Dict[str, float] = {}
+    feature_vector: Dict[str, float] = {}
     entropy: float
     should_solicit_clarification: bool
     clarification_prompt: Optional[str] = None
     intent_aware_response_modifier: str
     failure_mode_detected: str
     failure_mode_explanation: Optional[str] = None
+    attributions: List[FeatureAttribution] = []
+    counterfactual: str = ""
 
 
 class MLIMAnalysis(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     session_id: str
     question_text: str
     utterance: str
@@ -155,3 +168,32 @@ class MLIMSessionSummary(BaseModel):
     recommended_actions: List[str]
     average_stress: float = 0.0
     average_engagement: float = 0.0
+
+
+class EscalationRecord(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    session_id: str
+    user_id: str
+    analysis_id: Optional[str] = None
+    reason: str
+    intent_label: str
+    entropy: float
+    stress_indicators: float
+    status: str = "open"
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    reviewed_at: Optional[datetime] = None
+    reviewer_notes: Optional[str] = None
+
+
+class EscalationUpdateRequest(BaseModel):
+    status: str
+    reviewer_notes: Optional[str] = None
+
+
+class MIComparisonResult(BaseModel):
+    mi_sentiment_only: float
+    mi_full_signal: float
+    mlim_strictly_more_informative: bool
+    sample_size: int
+    sentiment_only_action_distribution: Dict[str, float]
+    full_signal_action_distribution: Dict[str, float]

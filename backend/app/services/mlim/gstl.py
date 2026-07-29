@@ -2,6 +2,7 @@ import math
 import logging
 from typing import Dict, List, Optional, Tuple, Any
 
+from app.config import settings
 from app.services.groq_service import call_groq_json
 from app.models.mlim import ASLOutput, PELOutput, GSTLOutput, GoalState, InteractionEntry
 
@@ -167,7 +168,8 @@ async def _get_derived_signals(
     prior_goal_state: Optional[GoalState],
 ) -> dict:
     history_str = ""
-    for entry in interaction_history[-4:]:
+    horizon = settings.mlim_context_horizon_k
+    for entry in interaction_history[-horizon:]:
         history_str += f"Q: {entry.question}\nA: {entry.answer}\nScore: {entry.score}/10\n\n"
 
     prior_str = ""
@@ -190,7 +192,7 @@ Verified goal belief distribution: {belief_str}
 Verified dominant goal: {dominant_goal}
 Verified temporal goal drift detected: {goal_drift_detected}
 
-Interaction History (last 4 turns):
+Interaction History (last {horizon} turns):
 {history_str if history_str else "No prior interactions."}
 
 {prior_str}

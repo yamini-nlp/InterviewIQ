@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     rate_limit_login: int = 5
     rate_limit_window_seconds: int = 60
     redis_url: str = "redis://localhost:6379"
+    mlim_clarification_entropy_threshold: float = 1.5
+    mlim_context_horizon_k: int = 5
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 

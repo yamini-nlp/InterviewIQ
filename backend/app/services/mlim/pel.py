@@ -1,6 +1,7 @@
 import logging
 from typing import List, Optional
 
+from app.config import settings
 from app.services.groq_service import call_groq_json
 from app.models.mlim import ASLOutput, PELOutput, SpeechActType, SpeechActRoleScore
 
@@ -23,7 +24,8 @@ def _safe_float(value, default: float = 0.0) -> float:
 def _build_context_str(context: List[str]) -> str:
     if not context:
         return "No prior context."
-    return "\n".join([f"Turn {i + 1}: {u}" for i, u in enumerate(context[-5:])])
+    horizon = settings.mlim_context_horizon_k
+    return "\n".join([f"Turn {i + 1}: {u}" for i, u in enumerate(context[-horizon:])])
 
 
 def _build_prompt(utterance: str, context: List[str], asl: ASLOutput) -> str:
