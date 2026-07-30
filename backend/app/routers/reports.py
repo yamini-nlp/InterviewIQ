@@ -4,6 +4,7 @@ from app.services.evaluation_service import evaluate_answer
 from app.database import get_db
 from app.models.session import Session, Feedback, Answer
 from app.auth.dependencies import get_current_user
+from app.core import metrics
 from datetime import datetime
 import logging
 
@@ -24,6 +25,7 @@ async def generate(session_id: str, current_user: dict = Depends(get_current_use
                 if data:
                     data.pop("_id", None)
             except Exception as db_err:
+                metrics.record_mongo_error(operation="sessions_find_one")
                 logger.warning(f"DB read failed for session {session_id}: {db_err}")
 
         if not data:
@@ -94,6 +96,7 @@ async def generate(session_id: str, current_user: dict = Depends(get_current_use
                         "sarcasm_count": sum(1 for d in mlim_docs if d.get("pel", {}).get("sarcasm_detected")),
                     }
             except Exception as e:
+                metrics.record_mongo_error(operation="mlim_analyses_find")
                 logger.warning(f"MLIM summary skipped for session {session_id}: {e}")
 
         report = await generate_report(session)
@@ -122,13 +125,20 @@ async def generate(session_id: str, current_user: dict = Depends(get_current_use
                 else:
                     await db.reports.insert_one(report.model_dump())
             except Exception as db_error:
+                metrics.record_mongo_error(operation="reports_save")
                 logger.warning(f"DB save skipped for report {session_id}: {db_error}")
 
         return report.model_dump()
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            f"Unhandled error in POST /api/reports/generate/{session_id}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail="An unexpected error occurred. Please try again later."
+        )
 
 
 @router.get("/sessions/all")
@@ -144,10 +154,18 @@ async def get_sessions(current_user: dict = Depends(get_current_user)):
                 sessions = await cursor.to_list(length=50)
                 return {"sessions": sessions}
             except Exception as db_error:
+                metrics.record_mongo_error(operation="sessions_list")
                 logger.warning(f"DB read skipped for sessions list: {db_error}")
         return {"sessions": []}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            f"Unhandled error in GET /api/reports/sessions/all for user "
+            f"{current_user['id']}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail="An unexpected error occurred. Please try again later."
+        )
 
 
 @router.get("/{session_id}")
@@ -163,10 +181,17 @@ async def get_report(session_id: str, current_user: dict = Depends(get_current_u
                 if data:
                     return data
             except Exception as db_error:
-                logger.error(f"DB read error for report {session_id}: {db_error}")
+                metrics.record_mongo_error(operation="reports_find_one")
+                logger.error(f"DB read error for report {session_id}: {db_error}", exc_info=True)
                 raise HTTPException(status_code=503, detail="Database error")
         raise HTTPException(status_code=404, detail="Report not found. Generate it first via POST /api/reports/generate/{session_id}")
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            f"Unhandled error in GET /api/reports/{session_id}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail="An unexpected error occurred. Please try again later."
+        )

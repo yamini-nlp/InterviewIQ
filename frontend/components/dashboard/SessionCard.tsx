@@ -2,7 +2,7 @@ import { Session } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { formatDate, scoreColor } from "@/lib/utils";
-import { Clock, BarChart2 } from "lucide-react";
+import { Clock, BarChart2, BrainCircuit } from "lucide-react";
 import Link from "next/link";
 
 export function SessionCard({ session }: { session: Session }) {
@@ -31,6 +31,11 @@ export function SessionCard({ session }: { session: Session }) {
           <Button variant="outline" size="sm" className="w-full">View Report</Button>
         </Link>
       )}
+      <Link href={`/dashboard/mlim?session=${session.id}`}>
+        <Button variant="ghost" size="sm" className="w-full mt-2">
+          <BrainCircuit size={12} /> MLIM Analytics
+        </Button>
+      </Link>
     </Card>
   );
 }

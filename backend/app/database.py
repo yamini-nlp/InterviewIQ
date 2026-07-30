@@ -43,6 +43,7 @@ async def _ensure_indexes():
     await db.mlim_escalations.create_index([("user_id", 1), ("status", 1)])
     await db.mlim_escalations.create_index([("session_id", 1)])
     await db.mlim_escalations.create_index("created_at")
+    await db.mlim_fairness_probes.create_index([("run_at", -1)])
     await db.refresh_tokens.create_index("jti", unique=True)
     await db.refresh_tokens.create_index("expires_at", expireAfterSeconds=0)
     await db.sessions.create_index("created_at", expireAfterSeconds=60 * 60 * 24 * 90)

@@ -5,6 +5,7 @@ from app.services.groq_service import transcribe_audio
 from app.database import get_db
 from app.models.session import SessionMode
 from app.auth.dependencies import get_current_user
+from app.core import metrics
 from datetime import datetime
 import uuid
 import logging
@@ -46,11 +47,20 @@ async def generate(request: GenerateQuestionsRequest, current_user: dict = Depen
             if db is not None:
                 await db.sessions.insert_one(session_data.copy())
         except Exception as db_error:
+            metrics.record_mongo_error(operation="sessions_insert")
             logger.warning(f"DB save skipped for session {session_id}: {db_error}")
 
         return {"session_id": session_id, "questions": [q.model_dump() for q in questions]}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            f"Unhandled error in POST /api/questions/generate: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail="An unexpected error occurred. Please try again later."
+        )
 
 
 @router.post("/transcribe")
@@ -59,5 +69,13 @@ async def transcribe(audio: UploadFile = File(...), current_user: dict = Depends
         audio_bytes = await audio.read()
         text = await transcribe_audio(audio_bytes, audio.filename or "audio.webm")
         return {"transcript": text}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            f"Unhandled error in POST /api/questions/transcribe: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail="An unexpected error occurred. Please try again later."
+        )

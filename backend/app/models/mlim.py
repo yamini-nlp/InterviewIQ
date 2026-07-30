@@ -190,6 +190,13 @@ class EscalationUpdateRequest(BaseModel):
     reviewer_notes: Optional[str] = None
 
 
+class FairnessProbeResult(BaseModel):
+    sample_size: int
+    label_stability_rate: float
+    flagged_utterances: List[Dict[str, Any]]
+    run_at: datetime
+
+
 class MIComparisonResult(BaseModel):
     mi_sentiment_only: float
     mi_full_signal: float

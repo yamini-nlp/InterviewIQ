@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Tuple, Any
 from app.config import settings
 from app.services.groq_service import call_groq_json
 from app.models.mlim import ASLOutput, PELOutput, GSTLOutput, GoalState, InteractionEntry
+from app.core import metrics
 
 logger = logging.getLogger(__name__)
 
@@ -211,6 +212,29 @@ Respond ONLY in this exact JSON format:
 
 
 async def compute_gstl(
+    utterance: str,
+    job_role: str,
+    question_text: str,
+    prior_goal_state: Optional[GoalState],
+    interaction_history: List[InteractionEntry],
+    asl: ASLOutput,
+    pel: PELOutput,
+    belief_history: Optional[List[Dict[str, float]]] = None,
+) -> GSTLOutput:
+    with metrics.time_mlim_stage("gstl"):
+        return await _compute_gstl_impl(
+            utterance=utterance,
+            job_role=job_role,
+            question_text=question_text,
+            prior_goal_state=prior_goal_state,
+            interaction_history=interaction_history,
+            asl=asl,
+            pel=pel,
+            belief_history=belief_history,
+        )
+
+
+async def _compute_gstl_impl(
     utterance: str,
     job_role: str,
     question_text: str,

@@ -1,22 +1,36 @@
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import StreamingResponse
+from fastapi.encoders import jsonable_encoder
+from pydantic import BaseModel
 from app.models.mlim import (
     MLIMAnalyzeRequest, MLIMAnalysis, MLIMSessionSummary,
     GoalState, InteractionEntry, MIComparisonResult,
-    EscalationRecord, EscalationUpdateRequest,
+    EscalationRecord, EscalationUpdateRequest, FairnessProbeResult,
 )
-from app.services.mlim_service import run_mlim_pipeline
+from app.services.mlim_service import run_asl, run_pel, run_gstl, run_ifl
 from app.services.mlim.benchmark import compute_mi_comparison
 from app.services.mlim.escalation import evaluate_escalation
+from app.services.mlim.fairness import run_fairness_probe
 from app.services.privacy_service import add_laplace_noise
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import get_current_user, require_admin
 from app.database import get_db
-from typing import Dict, List, Optional
+from app.core import metrics
+from typing import Dict, List, Optional, Tuple
 from collections import defaultdict
 import datetime
+import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/mlim", tags=["mlim"])
 
 MIN_MI_SAMPLE_SIZE = 5
+MAX_FAIRNESS_PROBE_UTTERANCES = 20
+
+
+class FairnessProbeRequest(BaseModel):
+    utterances: List[str]
 
 
 def _parse_mlim_analyses(raw_analyses: List[dict]) -> List[MLIMAnalysis]:
@@ -28,56 +42,105 @@ def _parse_mlim_analyses(raw_analyses: List[dict]) -> List[MLIMAnalysis]:
             continue
     return parsed
 
+
+def _sse_event(payload: dict) -> str:
+    return f"data: {json.dumps(jsonable_encoder(payload))}\n\n"
+
+
+async def _load_session_context(
+    db, session_id: str, current_user: dict
+) -> Tuple[Optional[dict], List[Dict[str, float]]]:
+    session = None
+    belief_history: List[Dict[str, float]] = []
+    if db is not None:
+        session = await db.sessions.find_one({"id": session_id})
+        if session and session.get("user_id") != current_user["id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+        if session:
+            belief_history = session.get("goal_belief_history", []) or []
+    return session, belief_history
+
+
+async def _persist_mlim_analysis(
+    db,
+    result: MLIMAnalysis,
+    current_user: dict,
+    session: Optional[dict],
+    belief_history: List[Dict[str, float]],
+    escalation_record: Optional[EscalationRecord],
+) -> None:
+    if db is None:
+        return
+
+    doc = result.model_dump()
+    doc["user_id"] = current_user["id"]
+    if doc.get("timestamp") and hasattr(doc["timestamp"], "isoformat"):
+        doc["timestamp"] = doc["timestamp"].isoformat()
+    await db.mlim_analyses.insert_one(doc)
+
+    if session:
+        updated_history = (belief_history + [result.gstl.goal_belief_distribution])[-50:]
+        await db.sessions.update_one(
+            {"id": result.session_id},
+            {"$set": {"goal_belief_history": updated_history}},
+        )
+
+    if escalation_record is not None:
+        escalation_doc = escalation_record.model_dump()
+        if escalation_doc.get("created_at") and hasattr(escalation_doc["created_at"], "isoformat"):
+            escalation_doc["created_at"] = escalation_doc["created_at"].isoformat()
+        if escalation_doc.get("reviewed_at") and hasattr(escalation_doc["reviewed_at"], "isoformat"):
+            escalation_doc["reviewed_at"] = escalation_doc["reviewed_at"].isoformat()
+        await db.mlim_escalations.insert_one(escalation_doc)
+
+
 @router.post("/analyze")
 async def analyze(request: MLIMAnalyzeRequest, current_user: dict = Depends(get_current_user)):
     try:
         db = get_db()
-        belief_history: List[Dict[str, float]] = []
-        if db is not None:
-            session = await db.sessions.find_one({"id": request.session_id})
-            if session and session.get("user_id") != current_user["id"]:
-                raise HTTPException(status_code=403, detail="Access denied")
-            if session:
-                belief_history = session.get("goal_belief_history", []) or []
+        session, belief_history = await _load_session_context(db, request.session_id, current_user)
 
-        result = await run_mlim_pipeline(
+        asl = await run_asl(request.answer_text, request.face_snapshot, request.voice_features)
+        pel = await run_pel(request.answer_text, request.context_utterances, asl)
+        gstl = await run_gstl(
+            utterance=request.answer_text,
+            job_role=request.job_role,
+            question_text=request.question_text,
+            prior_goal_state=request.prior_goal_state,
+            interaction_history=request.interaction_history,
+            asl=asl,
+            pel=pel,
+            belief_history=belief_history,
+        )
+        ifl = await run_ifl(
+            asl=asl,
+            pel=pel,
+            gstl=gstl,
             utterance=request.answer_text,
             question_text=request.question_text,
             job_role=request.job_role,
+            longitudinal_history=request.interaction_history,
+        )
+
+        result = MLIMAnalysis(
             session_id=request.session_id,
-            context_utterances=request.context_utterances,
-            interaction_history=request.interaction_history,
-            prior_goal_state=request.prior_goal_state,
+            question_text=request.question_text,
+            utterance=request.answer_text,
+            asl=asl,
+            pel=pel,
+            gstl=gstl,
+            ifl=ifl,
             face_snapshot=request.face_snapshot,
             voice_features=request.voice_features,
-            belief_history=belief_history,
         )
 
         escalation_record: Optional[EscalationRecord] = evaluate_escalation(result)
         if escalation_record is not None:
             escalation_record.user_id = current_user["id"]
 
-        if db is not None:
-            doc = result.model_dump()
-            doc["user_id"] = current_user["id"]
-            if doc.get("timestamp") and hasattr(doc["timestamp"], "isoformat"):
-                doc["timestamp"] = doc["timestamp"].isoformat()
-            await db.mlim_analyses.insert_one(doc)
-
-            if session:
-                updated_history = (belief_history + [result.gstl.goal_belief_distribution])[-50:]
-                await db.sessions.update_one(
-                    {"id": request.session_id},
-                    {"$set": {"goal_belief_history": updated_history}},
-                )
-
-            if escalation_record is not None:
-                escalation_doc = escalation_record.model_dump()
-                if escalation_doc.get("created_at") and hasattr(escalation_doc["created_at"], "isoformat"):
-                    escalation_doc["created_at"] = escalation_doc["created_at"].isoformat()
-                if escalation_doc.get("reviewed_at") and hasattr(escalation_doc["reviewed_at"], "isoformat"):
-                    escalation_doc["reviewed_at"] = escalation_doc["reviewed_at"].isoformat()
-                await db.mlim_escalations.insert_one(escalation_doc)
+        await _persist_mlim_analysis(
+            db, result, current_user, session, belief_history, escalation_record
+        )
 
         response = result.model_dump()
         response["escalation"] = escalation_record.model_dump() if escalation_record is not None else None
@@ -85,7 +148,89 @@ async def analyze(request: MLIMAnalyzeRequest, current_user: dict = Depends(get_
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            f"Unhandled error in POST /api/mlim/analyze for session {request.session_id}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail="An unexpected error occurred. Please try again later."
+        )
+
+
+@router.post("/analyze/stream")
+async def analyze_stream(request: MLIMAnalyzeRequest, current_user: dict = Depends(get_current_user)):
+    db = get_db()
+    session, belief_history = await _load_session_context(db, request.session_id, current_user)
+
+    async def event_generator():
+        try:
+            asl = await run_asl(request.answer_text, request.face_snapshot, request.voice_features)
+            yield _sse_event({"type": "layer", "layer": "asl", "data": asl.model_dump()})
+
+            pel = await run_pel(request.answer_text, request.context_utterances, asl)
+            yield _sse_event({"type": "layer", "layer": "pel", "data": pel.model_dump()})
+
+            gstl = await run_gstl(
+                utterance=request.answer_text,
+                job_role=request.job_role,
+                question_text=request.question_text,
+                prior_goal_state=request.prior_goal_state,
+                interaction_history=request.interaction_history,
+                asl=asl,
+                pel=pel,
+                belief_history=belief_history,
+            )
+            yield _sse_event({"type": "layer", "layer": "gstl", "data": gstl.model_dump()})
+
+            ifl = await run_ifl(
+                asl=asl,
+                pel=pel,
+                gstl=gstl,
+                utterance=request.answer_text,
+                question_text=request.question_text,
+                job_role=request.job_role,
+                longitudinal_history=request.interaction_history,
+            )
+            yield _sse_event({"type": "layer", "layer": "ifl", "data": ifl.model_dump()})
+
+            result = MLIMAnalysis(
+                session_id=request.session_id,
+                question_text=request.question_text,
+                utterance=request.answer_text,
+                asl=asl,
+                pel=pel,
+                gstl=gstl,
+                ifl=ifl,
+                face_snapshot=request.face_snapshot,
+                voice_features=request.voice_features,
+            )
+
+            escalation_record: Optional[EscalationRecord] = evaluate_escalation(result)
+            if escalation_record is not None:
+                escalation_record.user_id = current_user["id"]
+
+            await _persist_mlim_analysis(
+                db, result, current_user, session, belief_history, escalation_record
+            )
+
+            response = result.model_dump()
+            response["escalation"] = escalation_record.model_dump() if escalation_record is not None else None
+            yield _sse_event({"type": "done", "analysis": response})
+        except Exception as e:
+            logger.error(
+                f"MLIM streaming error for session {request.session_id}: {e}", exc_info=True
+            )
+            yield _sse_event({"type": "error", "message": str(e)})
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
 
 
 @router.get("/session/{session_id}/summary")
@@ -166,7 +311,13 @@ async def session_summary(session_id: str, current_user: dict = Depends(get_curr
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            f"Unhandled error in GET /api/mlim/session/{session_id}/summary: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail="An unexpected error occurred. Please try again later."
+        )
 
 
 @router.get("/session/{session_id}/mi-comparison")
@@ -197,7 +348,13 @@ async def session_mi_comparison(session_id: str, current_user: dict = Depends(ge
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            f"Unhandled error in GET /api/mlim/session/{session_id}/mi-comparison: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail="An unexpected error occurred. Please try again later."
+        )
 
 
 @router.get("/user/mi-comparison")
@@ -234,7 +391,14 @@ async def user_mi_comparison(current_user: dict = Depends(get_current_user)):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            f"Unhandled error in GET /api/mlim/user/mi-comparison for user "
+            f"{current_user['id']}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail="An unexpected error occurred. Please try again later."
+        )
 
 
 @router.get("/session/{session_id}/analyses")
@@ -250,7 +414,14 @@ async def get_analyses(session_id: str, current_user: dict = Depends(get_current
         analyses = await cursor.to_list(length=200)
         return {"analyses": analyses}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        metrics.record_mongo_error(operation="mlim_analyses_list")
+        logger.error(
+            f"Unhandled error in GET /api/mlim/session/{session_id}/analyses: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail="An unexpected error occurred. Please try again later."
+        )
 
 
 @router.get("/analysis/{analysis_id}/explain")
@@ -274,7 +445,49 @@ async def explain_analysis(analysis_id: str, current_user: dict = Depends(get_cu
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            f"Unhandled error in GET /api/mlim/analysis/{analysis_id}/explain: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail="An unexpected error occurred. Please try again later."
+        )
+
+
+@router.post("/fairness/probe")
+async def fairness_probe(
+    request: FairnessProbeRequest, current_user: dict = Depends(require_admin)
+):
+    try:
+        if len(request.utterances) == 0:
+            raise HTTPException(status_code=400, detail="At least one utterance is required")
+        if len(request.utterances) > MAX_FAIRNESS_PROBE_UTTERANCES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Maximum of {MAX_FAIRNESS_PROBE_UTTERANCES} utterances per fairness probe call",
+            )
+
+        result: FairnessProbeResult = await run_fairness_probe(request.utterances)
+
+        db = get_db()
+        if db is not None:
+            doc = result.model_dump()
+            if doc.get("run_at") and hasattr(doc["run_at"], "isoformat"):
+                doc["run_at"] = doc["run_at"].isoformat()
+            doc["requested_by"] = current_user["id"]
+            await db.mlim_fairness_probes.insert_one(doc)
+
+        return result.model_dump()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            f"Unhandled error in POST /api/mlim/fairness/probe: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail="An unexpected error occurred. Please try again later."
+        )
 
 
 @router.get("/escalations")
@@ -290,7 +503,15 @@ async def list_escalations(current_user: dict = Depends(get_current_user)):
         escalations = await cursor.to_list(length=500)
         return {"escalations": escalations}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        metrics.record_mongo_error(operation="mlim_escalations_list")
+        logger.error(
+            f"Unhandled error in GET /api/mlim/escalations for user "
+            f"{current_user['id']}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail="An unexpected error occurred. Please try again later."
+        )
 
 
 @router.get("/escalations/{escalation_id}")
@@ -309,7 +530,13 @@ async def get_escalation(escalation_id: str, current_user: dict = Depends(get_cu
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            f"Unhandled error in GET /api/mlim/escalations/{escalation_id}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail="An unexpected error occurred. Please try again later."
+        )
 
 
 @router.patch("/escalations/{escalation_id}")
@@ -346,4 +573,10 @@ async def update_escalation(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            f"Unhandled error in PATCH /api/mlim/escalations/{escalation_id}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail="An unexpected error occurred. Please try again later."
+        )

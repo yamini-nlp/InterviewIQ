@@ -1,5 +1,6 @@
 from groq import AsyncGroq
 from app.config import settings
+from app.core import metrics
 import json
 import re
 import asyncio
@@ -59,6 +60,8 @@ async def call_groq(
             )
             if attempt < retries - 1:
                 await asyncio.sleep(wait)
+    metrics.record_groq_error(operation="call_groq")
+    logger.error(f"Groq call failed after {retries} attempts (model={model}): {last_error}")
     raise last_error
 
 
@@ -88,6 +91,8 @@ async def call_groq_json(
         except Exception as e:
             last_error = e
             await asyncio.sleep(0.5)
+    metrics.record_groq_error(operation="call_groq_json")
+    logger.error(f"Groq JSON call failed after {retries} attempts (model={model}): {last_error}")
     raise last_error
 
 
@@ -114,7 +119,12 @@ async def stream_groq(
             if delta:
                 yield delta
     except asyncio.TimeoutError:
+        metrics.record_groq_error(operation="stream_groq")
         logger.warning("stream_groq timed out waiting for first chunk")
+        raise
+    except Exception as e:
+        metrics.record_groq_error(operation="stream_groq")
+        logger.error(f"stream_groq call failed (model={model}): {e}", exc_info=True)
         raise
 
 
@@ -133,4 +143,10 @@ async def transcribe_audio(
         )
         return transcription.text
     except asyncio.TimeoutError:
+        metrics.record_groq_error(operation="transcribe_audio")
+        logger.warning("Audio transcription timed out after 60s")
         raise Exception("Audio transcription timed out after 60s")
+    except Exception as e:
+        metrics.record_groq_error(operation="transcribe_audio")
+        logger.error(f"Audio transcription failed: {e}", exc_info=True)
+        raise

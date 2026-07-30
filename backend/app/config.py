@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379"
     mlim_clarification_entropy_threshold: float = 1.5
     mlim_context_horizon_k: int = 5
+    metrics_enabled: bool = True
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 

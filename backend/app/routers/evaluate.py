@@ -4,6 +4,7 @@ from app.services.evaluation_service import evaluate_answer
 from app.models.session import Answer
 from app.database import get_db
 from app.auth.dependencies import get_current_user
+from app.core import metrics
 import logging
 
 logger = logging.getLogger(__name__)
@@ -37,10 +38,18 @@ async def evaluate(request: EvaluateAnswerRequest, current_user: dict = Depends(
         except HTTPException:
             raise
         except Exception as db_error:
+            metrics.record_mongo_error(operation="evaluate_answer_session_update")
             logger.warning(f"DB save skipped for session {request.session_id}: {db_error}")
 
         return feedback.model_dump()
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            f"Unhandled error in POST /api/evaluate/answer for session "
+            f"{request.session_id}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail="An unexpected error occurred. Please try again later."
+        )

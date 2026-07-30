@@ -1,4 +1,4 @@
-import { getAccessToken, refreshAccessToken } from "@/lib/auth";
+import { ensureAccessToken, authorizedFetch } from "@/lib/mlim-api";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL;
 
@@ -18,10 +18,7 @@ export async function streamInterviewerResponse(
     clarificationPrompt?: string;
   }
 ): Promise<void> {
-  let token = getAccessToken();
-  if (!token) {
-    token = await refreshAccessToken();
-  }
+  const token = await ensureAccessToken();
   if (!token) {
     callbacks.onError("Not authenticated");
     return;
@@ -38,28 +35,10 @@ export async function streamInterviewerResponse(
 
   let response: Response;
   try {
-    response = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    response = await authorizedFetch(url, { method: "GET" }, token);
   } catch (e) {
     callbacks.onError("Network error connecting to stream");
     return;
-  }
-
-  if (response.status === 401) {
-    const newToken = await refreshAccessToken();
-    if (!newToken) {
-      callbacks.onError("Authentication expired");
-      return;
-    }
-    try {
-      response = await fetch(url, {
-        headers: { Authorization: `Bearer ${newToken}` },
-      });
-    } catch (e) {
-      callbacks.onError("Network error after token refresh");
-      return;
-    }
   }
 
   if (!response.ok || !response.body) {

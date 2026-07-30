@@ -1,3 +1,39 @@
+export type SpeechActType =
+  | "directive"
+  | "expressive"
+  | "commissive"
+  | "representative"
+  | "declarative";
+
+export interface SpeechActRoleScore {
+  act: SpeechActType;
+  confidence: number;
+}
+
+export type IntentLabel =
+  | "genuine_answer"
+  | "face_saving_assertion"
+  | "request_for_challenge"
+  | "expressing_confusion"
+  | "sarcastic_response"
+  | "seeking_validation"
+  | "committed_retry"
+  | "off_topic";
+
+export type FailureModeDetected =
+  | "none"
+  | "topic_drift"
+  | "unresolved_sarcasm_ambiguity"
+  | "goal_intent_mismatch"
+  | "high_ambiguity";
+
+export type HiringReadinessSignal =
+  | "strong_yes"
+  | "lean_yes"
+  | "neutral"
+  | "lean_no"
+  | "strong_no";
+
 export interface ASLOutput {
   sentiment: "positive" | "negative" | "neutral";
   sentiment_confidence: number;
@@ -6,12 +42,17 @@ export interface ASLOutput {
   uncertainty_s: number;
   affective_masking_detected: boolean;
   masking_reason: string | null;
+  lexicon_sentiment: string;
+  lexicon_confidence: number;
+  lexicon_llm_disagreement: boolean;
 }
 
 export interface PELOutput {
   primary_speech_act: string;
   speech_act_confidence: number;
   secondary_speech_acts: string[];
+  concurrent_speech_acts: SpeechActRoleScore[];
+  is_interrogative: boolean;
   sarcasm_detected: boolean;
   pragmatic_inversion: boolean;
   is_requesting_challenge: boolean;
@@ -20,6 +61,7 @@ export interface PELOutput {
   is_face_saving: boolean;
   is_seeking_validation: boolean;
   is_committing_to_retry: boolean;
+  maxim_violations: Record<string, boolean>;
   gricean_implicature: string;
   pragmatic_context_label: string;
 }
@@ -34,21 +76,36 @@ export interface GSTLOutput {
   stress_indicators: number;
   readiness_estimate: number;
   recommended_system_action: string;
+  hiring_readiness_signal: HiringReadinessSignal | null;
+  belief_update_trace: Record<string, unknown>;
+  goal_drift_kl_divergence: number;
+}
+
+export interface FeatureAttribution {
+  feature: string;
+  value: number;
+  weight: number;
+  contribution: number;
 }
 
 export interface IFLOutput {
   intent_label: string;
   intent_confidence: number;
   intent_distribution: Record<string, number>;
+  raw_intent_distribution: Record<string, number>;
+  feature_vector: Record<string, number>;
   entropy: number;
   should_solicit_clarification: boolean;
   clarification_prompt: string | null;
   intent_aware_response_modifier: string;
-  failure_mode_detected: "none" | "affective_masking" | "pragmatic_inversion" | "temporal_goal_drift" | "role_ambiguity";
+  failure_mode_detected: FailureModeDetected;
   failure_mode_explanation: string | null;
+  attributions: FeatureAttribution[];
+  counterfactual: string;
 }
 
 export interface MLIMAnalysis {
+  id: string;
   session_id: string;
   question_text: string;
   utterance: string;
@@ -56,8 +113,8 @@ export interface MLIMAnalysis {
   pel: PELOutput;
   gstl: GSTLOutput;
   ifl: IFLOutput;
-  face_snapshot: Record<string, any> | null;
-  voice_features: Record<string, any> | null;
+  face_snapshot: Record<string, unknown> | null;
+  voice_features: Record<string, unknown> | null;
   timestamp: string;
 }
 
@@ -79,6 +136,9 @@ export interface GoalState {
   stress_indicators: number;
   readiness_estimate: number;
   recommended_system_action: string;
+  hiring_readiness_signal: HiringReadinessSignal | null;
+  belief_update_trace: Record<string, unknown>;
+  goal_drift_kl_divergence: number;
 }
 
 export interface MLIMSessionSummary {
@@ -106,6 +166,6 @@ export interface MLIMAnalyzeRequest {
   context_utterances: string[];
   interaction_history: InteractionEntry[];
   prior_goal_state: GoalState | null;
-  face_snapshot: Record<string, any> | null;
-  voice_features: Record<string, any> | null;
+  face_snapshot: Record<string, unknown> | null;
+  voice_features: Record<string, unknown> | null;
 }

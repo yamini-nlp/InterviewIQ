@@ -4,6 +4,7 @@ from typing import List, Optional
 from app.config import settings
 from app.services.groq_service import call_groq_json
 from app.models.mlim import ASLOutput, PELOutput, SpeechActType, SpeechActRoleScore
+from app.core import metrics
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +118,11 @@ def detect_pragmatic_inversion(asl: ASLOutput, pel_raw: dict) -> bool:
 
 
 async def compute_pel(utterance: str, context: List[str], asl: ASLOutput) -> PELOutput:
+    with metrics.time_mlim_stage("pel"):
+        return await _compute_pel_impl(utterance, context, asl)
+
+
+async def _compute_pel_impl(utterance: str, context: List[str], asl: ASLOutput) -> PELOutput:
     try:
         prompt = _build_prompt(utterance, context, asl)
         data = await call_groq_json(prompt, model=FAST_MODEL)

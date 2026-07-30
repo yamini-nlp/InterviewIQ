@@ -5,6 +5,7 @@ from typing import Optional, Tuple, Dict
 
 from app.services.groq_service import call_groq_json
 from app.models.mlim import ASLOutput
+from app.core import metrics
 
 logger = logging.getLogger(__name__)
 
@@ -165,6 +166,15 @@ def _reconcile(
 
 
 async def compute_asl(
+    utterance: str,
+    face_snapshot: Optional[dict] = None,
+    voice_features: Optional[dict] = None,
+) -> ASLOutput:
+    with metrics.time_mlim_stage("asl"):
+        return await _compute_asl_impl(utterance, face_snapshot, voice_features)
+
+
+async def _compute_asl_impl(
     utterance: str,
     face_snapshot: Optional[dict] = None,
     voice_features: Optional[dict] = None,

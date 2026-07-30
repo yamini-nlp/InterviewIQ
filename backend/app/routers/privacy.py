@@ -1,11 +1,15 @@
 import json
+import logging
 
 from fastapi import APIRouter, HTTPException, Depends, Response
 from pydantic import BaseModel
 
 from app.auth.dependencies import get_current_user
 from app.database import get_db
+from app.core import metrics
 from app.services.privacy_service import export_user_data, delete_user_data
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/privacy", tags=["privacy"])
 
@@ -19,7 +23,17 @@ async def export_data(current_user: dict = Depends(get_current_user)):
     db = get_db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database unavailable")
-    data = await export_user_data(db, current_user["id"])
+    try:
+        data = await export_user_data(db, current_user["id"])
+    except Exception as e:
+        metrics.record_mongo_error(operation="export_user_data")
+        logger.error(
+            f"Unhandled error in GET /api/privacy/export for user {current_user['id']}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail="An unexpected error occurred. Please try again later."
+        )
     content = json.dumps(data, indent=2, default=str)
     return Response(
         content=content,
@@ -41,13 +55,23 @@ async def delete_account(
     if db is None:
         raise HTTPException(status_code=503, detail="Database unavailable")
 
-    counts = await delete_user_data(db, current_user["id"])
+    try:
+        counts = await delete_user_data(db, current_user["id"])
 
-    user_delete_result = await db.users.delete_one({"id": current_user["id"]})
-    counts["users"] = user_delete_result.deleted_count
+        user_delete_result = await db.users.delete_one({"id": current_user["id"]})
+        counts["users"] = user_delete_result.deleted_count
 
-    refresh_delete_result = await db.refresh_tokens.delete_many({"user_id": current_user["id"]})
-    counts["refresh_tokens"] = refresh_delete_result.deleted_count
+        refresh_delete_result = await db.refresh_tokens.delete_many({"user_id": current_user["id"]})
+        counts["refresh_tokens"] = refresh_delete_result.deleted_count
+    except Exception as e:
+        metrics.record_mongo_error(operation="delete_user_data")
+        logger.error(
+            f"Unhandled error in DELETE /api/privacy/account for user {current_user['id']}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail="An unexpected error occurred. Please try again later."
+        )
 
     return {"deleted": True, "counts": counts}
 

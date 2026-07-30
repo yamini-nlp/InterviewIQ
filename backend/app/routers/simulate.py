@@ -4,6 +4,7 @@ from app.prompts.simulator import build_simulator_prompt
 from app.models.session import Answer
 from app.database import get_db
 from app.auth.dependencies import get_current_user
+from app.core import metrics
 from pydantic import BaseModel
 from typing import Optional
 import logging
@@ -28,7 +29,15 @@ async def respond(request: SimulateRequest, current_user: dict = Depends(get_cur
         db = get_db()
 
         if db is not None:
-            session = await db.sessions.find_one({"id": request.session_id})
+            try:
+                session = await db.sessions.find_one({"id": request.session_id})
+            except Exception as db_error:
+                metrics.record_mongo_error(operation="sessions_find_one")
+                logger.error(
+                    f"DB read failed for session {request.session_id}: {db_error}",
+                    exc_info=True,
+                )
+                raise HTTPException(status_code=503, detail="Database error")
             if session and session.get("user_id") != current_user["id"]:
                 raise HTTPException(status_code=403, detail="Access denied")
 
@@ -56,10 +65,18 @@ Rephrase it naturally as a real interviewer would ask it. Return ONLY the rephra
                     {"$push": {"answers": answer.model_dump()}},
                 )
             except Exception as db_error:
+                metrics.record_mongo_error(operation="sessions_update")
                 logger.warning(f"DB save skipped for session {request.session_id}: {db_error}")
 
         return {"response": response.strip()}
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            f"Unhandled error in POST /api/simulate/respond for session "
+            f"{request.session_id}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail="An unexpected error occurred. Please try again later."
+        )

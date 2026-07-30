@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from app.auth.dependencies import get_current_user
 from app.database import get_db
+from app.core import metrics
 from pydantic import BaseModel
 from typing import List, Dict
 from collections import defaultdict
@@ -57,6 +58,7 @@ async def log_events(batch: IntegrityBatch, current_user: dict = Depends(get_cur
                     {"$push": {"integrity_events": {"$each": events}}},
                 )
         except Exception as db_error:
+            metrics.record_mongo_error(operation="integrity_events_insert")
             logger.warning(f"Integrity event persistence failed: {db_error}")
 
     return {"logged": len(batch.events)}

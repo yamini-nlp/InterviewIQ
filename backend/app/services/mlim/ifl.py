@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Tuple
 from app.config import settings
 from app.services.groq_service import call_groq_json
 from app.services.mlim.explain import feature_attribution, counterfactual_explanation
+from app.core import metrics
 from app.models.mlim import (
     ASLOutput,
     PELOutput,
@@ -241,6 +242,27 @@ def _detect_failure_mode(
 
 
 async def compute_ifl(
+    asl: ASLOutput,
+    pel: PELOutput,
+    gstl: GSTLOutput,
+    utterance: str,
+    question_text: str,
+    job_role: str,
+    longitudinal_history: List[InteractionEntry],
+) -> IFLOutput:
+    with metrics.time_mlim_stage("ifl"):
+        return await _compute_ifl_impl(
+            asl=asl,
+            pel=pel,
+            gstl=gstl,
+            utterance=utterance,
+            question_text=question_text,
+            job_role=job_role,
+            longitudinal_history=longitudinal_history,
+        )
+
+
+async def _compute_ifl_impl(
     asl: ASLOutput,
     pel: PELOutput,
     gstl: GSTLOutput,

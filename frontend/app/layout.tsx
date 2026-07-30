@@ -1,11 +1,28 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ToastProvider, Toaster } from "@/components/ui/Toast";
+import { Navbar } from "@/components/layout/Navbar";
+import { Sidebar, SidebarProvider } from "@/components/layout/Sidebar";
 
 export const metadata: Metadata = {
   title: "RoleReady — AI Interview Coach",
   description: "Practice, simulate, and ace your next interview with AI-powered MLIM analysis",
 };
+
+const themeInitScript = `
+(function () {
+  try {
+    var match = document.cookie.match(/(?:^|; )theme=([^;]*)/);
+    var stored = match ? decodeURIComponent(match[1]) : "system";
+    var resolved = stored === "system" || !stored
+      ? (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+      : stored;
+    document.documentElement.classList.toggle("dark", resolved === "dark");
+    document.documentElement.style.colorScheme = resolved;
+  } catch (e) {}
+})();
+`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -18,10 +35,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
           rel="stylesheet"
         />
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body style={{ background: "#08090c", color: "#e8e8f0", margin: 0, fontFamily: "'DM Sans', sans-serif" }}>
+      <body className="bg-neutral-50 text-neutral-900 font-sans m-0">
         <AuthProvider>
-          {children}
+          <ToastProvider>
+            <SidebarProvider>
+              <div className="flex min-h-screen">
+                <Sidebar />
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <Navbar />
+                  <main className="flex-1">{children}</main>
+                </div>
+              </div>
+            </SidebarProvider>
+            <Toaster />
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>

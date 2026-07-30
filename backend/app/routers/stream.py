@@ -4,6 +4,7 @@ from app.auth.dependencies import get_current_user
 from app.database import get_db
 from app.services.groq_service import stream_groq
 from app.prompts.simulator import build_simulator_prompt
+from app.core import metrics
 import json
 import asyncio
 import logging
@@ -25,19 +26,35 @@ async def _event_generator(
         db = get_db()
 
         if db is None:
-            yield f"data: {json.dumps({'error': 'Database unavailable'})}\n\n"
+            logger.warning(f"Stream request for session {session_id}: database unavailable")
+            yield f"data: {json.dumps({'type': 'error', 'message': 'Database unavailable'})}\n\n"
             return
 
-        session = await db.sessions.find_one(
-            {"id": session_id, "user_id": user_id}, {"_id": 0}
-        )
+        try:
+            session = await db.sessions.find_one(
+                {"id": session_id, "user_id": user_id}, {"_id": 0}
+            )
+        except Exception as db_error:
+            metrics.record_mongo_error(operation="sessions_find_one")
+            logger.error(
+                f"DB read failed for session {session_id} in stream endpoint: {db_error}",
+                exc_info=True,
+            )
+            yield f"data: {json.dumps({'type': 'error', 'message': 'Database error'})}\n\n"
+            return
+
         if not session:
-            yield f"data: {json.dumps({'error': 'Session not found'})}\n\n"
+            logger.warning(f"Stream request for missing session {session_id}")
+            yield f"data: {json.dumps({'type': 'error', 'message': 'Session not found'})}\n\n"
             return
 
         questions = session.get("questions", [])
         if question_index >= len(questions):
-            yield f"data: {json.dumps({'error': 'Question index out of range'})}\n\n"
+            logger.warning(
+                f"Stream request for session {session_id}: question index "
+                f"{question_index} out of range ({len(questions)} questions)"
+            )
+            yield f"data: {json.dumps({'type': 'error', 'message': 'Question index out of range'})}\n\n"
             return
 
         question = questions[question_index]
@@ -73,14 +90,14 @@ async def _event_generator(
                 yield f"data: {json.dumps({'type': 'chunk', 'text': chunk})}\n\n"
                 await asyncio.sleep(0)
         except Exception as e:
-            logger.error(f"Streaming error for session {session_id}: {e}")
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            logger.error(f"Streaming error for session {session_id}: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': 'An unexpected error occurred while generating the response.'})}\n\n"
             return
 
         yield f"data: {json.dumps({'type': 'done', 'full_text': full_text})}\n\n"
     except Exception as e:
         logger.error(f"Unhandled error in event generator for session {session_id}: {e}", exc_info=True)
-        yield f"data: {json.dumps({'error': 'Internal server error'})}\n\n"
+        yield f"data: {json.dumps({'type': 'error', 'message': 'Internal server error'})}\n\n"
 
 
 @router.get("/{session_id}/stream")
