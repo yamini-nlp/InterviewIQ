@@ -118,11 +118,11 @@ export default function Home() {
               </span>
             </div>
 
-            <h1 style={{ fontFamily: "'Syne', sans-serif" }} className="font-extrabold leading-[1.03] tracking-tight mb-6">
-              <span className="block text-white" style={{ fontSize: "clamp(2.5rem, 5.4vw, 4.4rem)" }}>Every answer says</span>
-              <span className="block text-white" style={{ fontSize: "clamp(2.5rem, 5.4vw, 4.4rem)" }}>two things at once.</span>
+            <h1 style={{ fontFamily: "'Syne', sans-serif" }} className="font-extrabold leading-[1.05] tracking-tight mb-6">
+              <span className="block text-white" style={{ fontSize: "clamp(2rem, 4vw, 3.4rem)" }}>Every answer says</span>
+              <span className="block text-white" style={{ fontSize: "clamp(2rem, 4vw, 3.4rem)" }}>two things at once.</span>
               <span className="block" style={{
-                fontSize: "clamp(2.5rem, 5.4vw, 4.4rem)",
+                fontSize: "clamp(2rem, 4vw, 3.4rem)",
                 background: "linear-gradient(135deg, #6c63ff 0%, #a78bfa 50%, #60a5fa 100%)",
                 WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
               }}>This reads both.</span>
@@ -192,41 +192,52 @@ export default function Home() {
       </section>
 
       <section className="py-28 px-6 max-w-7xl mx-auto">
-        <div className="grid lg:grid-cols-2 gap-16 items-start">
-          <div className="lg:sticky lg:top-28">
-            <span className="text-[10px] font-mono uppercase tracking-[0.2em] block mb-5" style={{ color: "#6c63ff" }}>Architecture</span>
-            <h2 className="font-bold text-white mb-5 leading-tight" style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(1.8rem, 3vw, 2.5rem)" }}>
-              <span className="block">The 4-Layer</span>
-              <span className="block" style={{ color: "#6c63ff" }}>Intent Pipeline</span>
-            </h2>
-            <p className="leading-relaxed mb-8" style={{ color: "#6b7280", fontSize: "0.95rem" }}>
-              Each answer passes through all four layers. ASL and PEL run first, then GSTL updates the HMM belief state, and IFL fuses everything into a final intent prediction with entropy-based uncertainty scoring.
-            </p>
-            <div className="space-y-3">
-              {[
-                "ASL and PEL run on the fast 8B model for low latency",
-                "HMM belief state persisted across the full session",
-                "Entropy threshold automatically triggers a clarification question",
-                "IFL runs on the 70B reasoning model with full session history",
-              ].map((item) => (
-                <div key={item} className="flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "rgba(108,99,255,0.15)", border: "1px solid rgba(108,99,255,0.3)" }}>
-                    <Check size={10} style={{ color: "#6c63ff" }} />
+        <div className="grid lg:grid-cols-2 gap-16 items-stretch">
+          <div className="lg:sticky lg:top-28 h-full flex flex-col justify-between">
+            <div>
+              <span className="text-[10px] font-mono uppercase tracking-[0.2em] block mb-5" style={{ color: "#6c63ff" }}>Architecture</span>
+              <h2 className="font-bold text-white mb-5 leading-tight" style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(1.8rem, 3vw, 2.5rem)" }}>
+                <span className="block">The 4-Layer</span>
+                <span className="block" style={{ color: "#6c63ff" }}>Intent Pipeline</span>
+              </h2>
+              <p className="leading-relaxed mb-8" style={{ color: "#6b7280", fontSize: "0.95rem" }}>
+                Each answer passes through all four layers. ASL and PEL run first, then GSTL updates the HMM belief state, and IFL fuses everything into a final intent prediction with entropy-based uncertainty scoring.
+              </p>
+              <div className="space-y-3">
+                {[
+                  "ASL and PEL run on the fast 8B model for low latency",
+                  "HMM belief state persisted across the full session",
+                  "Entropy threshold automatically triggers a clarification question",
+                  "IFL runs on the 70B reasoning model with full session history",
+                ].map((item) => (
+                  <div key={item} className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "rgba(108,99,255,0.15)", border: "1px solid rgba(108,99,255,0.3)" }}>
+                      <Check size={10} style={{ color: "#6c63ff" }} />
+                    </div>
+                    <span className="text-sm" style={{ color: "#9ca3af" }}>{item}</span>
                   </div>
-                  <span className="text-sm" style={{ color: "#9ca3af" }}>{item}</span>
-                </div>
-              ))}
+                ))}
+              </div>
+            </div>
+            <div className="rounded-2xl p-6 mt-10 hidden lg:block" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#6c63ff] animate-pulse" />
+                <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "#4b5563" }}>Pipeline Summary</span>
+              </div>
+              <p className="text-xs leading-relaxed" style={{ color: "#6b7280" }}>
+                Four layers, one continuous read on every answer — from raw affect to a fused, entropy-scored intent label.
+              </p>
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-3 flex flex-col">
             {mlimLayers.map((layer, i) => {
               const active = activeLayer === i;
               return (
                 <div
                   key={layer.id}
                   onClick={() => setActiveLayer(i)}
-                  className="rounded-2xl p-5 cursor-pointer transition-all duration-300"
+                  className="rounded-2xl p-5 cursor-pointer transition-all duration-300 flex-1"
                   style={{
                     background: active ? `linear-gradient(135deg, ${layer.color}0a 0%, rgba(255,255,255,0.02) 100%)` : "rgba(255,255,255,0.02)",
                     border: `1px solid ${active ? layer.color + "30" : "rgba(255,255,255,0.06)"}`,
