@@ -34,7 +34,7 @@ export default function ReportPage() {
     const w = pdf.internal.pageSize.getWidth();
     const h = (canvas.height / canvas.width) * w;
     pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, w, h);
-    pdf.save(`InterviewIQ_Report_${id}.pdf`);
+    pdf.save(`RoleReady?_Report_${id}.pdf`);
   };
 
   if (loading) return (

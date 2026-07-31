@@ -176,7 +176,7 @@ export function Navbar() {
           style={{ fontFamily: "'Syne', sans-serif" }}
           className={cn("hidden text-lg font-bold text-neutral-900 sm:inline")}
         >
-          InterviewIQ
+          RoleReady?
         </span>
       </Link>
 
