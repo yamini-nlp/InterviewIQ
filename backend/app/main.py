@@ -38,10 +38,11 @@ app = FastAPI(title="PrepVision API", version=_APP_VERSION, lifespan=lifespan)
 register_exception_handlers(app)
 
 origins = [o.strip() for o in settings.allowed_origins.split(",")]
+hosts = [h.strip() for h in settings.allowed_hosts.split(",")]
 
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["localhost", "127.0.0.1", "prepvision.ai", "api.prepvision.ai", "*"],
+    allowed_hosts=hosts,
 )
 
 app.add_middleware(

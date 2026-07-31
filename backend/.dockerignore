@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.env
+.env.*
+.pytest_cache/
+.ruff_cache/
+tests/
+.git/
+.gitignore
+*.md
+.python-version
+*.code-workspace
+Dockerfile
+.dockerignore

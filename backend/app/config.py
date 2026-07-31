@@ -4,9 +4,11 @@ from pydantic import field_validator
 
 class Settings(BaseSettings):
     groq_api_key: str
+    environment: str = "development"
     mongodb_url: str = "mongodb://localhost:27017"
     db_name: str = "interviewiq"
     allowed_origins: str = "http://localhost:3000"
+    allowed_hosts: str = "localhost,127.0.0.1"
     jwt_secret: str
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 15
