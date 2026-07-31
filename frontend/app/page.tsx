@@ -100,70 +100,104 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#07080b] overflow-x-hidden" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-      <section className="relative min-h-[92vh] flex flex-col items-center justify-center px-6 pt-16 pb-24 overflow-hidden">
+      <section className="relative min-h-[92vh] flex items-center px-6 pt-24 pb-20 overflow-hidden">
         <div className="absolute inset-0 pointer-events-none" style={{
           backgroundImage: "linear-gradient(rgba(108,99,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(108,99,255,0.035) 1px, transparent 1px)",
           backgroundSize: "64px 64px",
-          maskImage: "radial-gradient(ellipse 70% 60% at 50% 30%, black 40%, transparent 100%)",
+          maskImage: "radial-gradient(ellipse 70% 60% at 20% 30%, black 40%, transparent 100%)",
         }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[640px] rounded-full pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(108,99,255,0.1) 0%, transparent 70%)" }} />
-        <div className="absolute top-[28%] left-[62%] w-[420px] h-[420px] rounded-full pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(96,165,250,0.08) 0%, transparent 70%)" }} />
+        <div className="absolute top-[10%] right-[-10%] w-[720px] h-[720px] rounded-full pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(108,99,255,0.1) 0%, transparent 70%)" }} />
 
-        <div className="relative z-10 max-w-5xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2.5 mb-8 px-4 py-2 rounded-full border" style={{ borderColor: "rgba(108,99,255,0.25)", background: "rgba(108,99,255,0.07)" }}>
-            <span className="w-1.5 h-1.5 rounded-full bg-[#6c63ff] animate-pulse" />
-            <span className="text-[11px] font-mono font-semibold tracking-[0.18em] uppercase" style={{ color: "#a78bfa" }}>
-              Multi-Layer Intent Modeling · Groq-Powered
-            </span>
+        <div className="relative z-10 max-w-7xl mx-auto grid lg:grid-cols-[1.1fr_0.9fr] gap-16 items-center w-full">
+          <div>
+            <div className="inline-flex items-center gap-2.5 mb-7 px-4 py-2 rounded-full border" style={{ borderColor: "rgba(108,99,255,0.25)", background: "rgba(108,99,255,0.07)" }}>
+              <span className="w-1.5 h-1.5 rounded-full bg-[#6c63ff] animate-pulse" />
+              <span className="text-[11px] font-mono font-semibold tracking-[0.18em] uppercase" style={{ color: "#a78bfa" }}>
+                Multi-Layer Intent Modeling · Groq-Powered
+              </span>
+            </div>
+
+            <h1 style={{ fontFamily: "'Syne', sans-serif" }} className="font-extrabold leading-[1.05] tracking-tight mb-6">
+              <span className="block text-white" style={{ fontSize: "clamp(2.2rem, 4.5vw, 3.6rem)" }}>The AI interview coach</span>
+              <span className="block" style={{
+                fontSize: "clamp(2.2rem, 4.5vw, 3.6rem)",
+                background: "linear-gradient(135deg, #6c63ff 0%, #a78bfa 50%, #60a5fa 100%)",
+                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+              }}>that reads intent.</span>
+            </h1>
+
+            <p className="text-lg leading-relaxed mb-10 max-w-xl" style={{ color: "#9ca3af" }}>
+              Not just what you say — but what you <em className="not-italic" style={{ color: "#e5e7eb" }}>mean</em>. A 4-layer analysis pipeline reads every answer for emotional signal, pragmatic intent, and goal drift, in real time.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-10">
+              <Link href="/register">
+                <button className="group flex items-center gap-2.5 px-8 py-3.5 rounded-xl font-semibold text-white transition-all duration-200 hover:-translate-y-0.5" style={{ background: "linear-gradient(135deg, #6c63ff, #8b85ff)", boxShadow: "0 0 32px rgba(108,99,255,0.35), 0 4px 16px rgba(0,0,0,0.4)" }}>
+                  Start Free Session
+                  <ArrowRight size={16} className="transition-transform duration-200 group-hover:translate-x-0.5" />
+                </button>
+              </Link>
+              <Link href="/login">
+                <button className="flex items-center gap-2 px-8 py-3.5 rounded-xl font-medium transition-all duration-200 hover:border-white/20" style={{ border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", background: "rgba(255,255,255,0.03)" }}>
+                  Sign in
+                </button>
+              </Link>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 mb-10">
+              {[
+                { v: "4", l: "MLIM Layers" }, { v: "8", l: "Intent Labels" },
+                { v: "7", l: "Emotion Axes" }, { v: "2", l: "Groq Models" },
+              ].map((s) => (
+                <div key={s.l} className="px-5 py-2.5 rounded-xl text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <span style={{ fontFamily: "'Syne', sans-serif", color: "#6c63ff" }} className="font-bold text-xl block leading-none mb-0.5">{s.v}</span>
+                  <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "#6b7280" }}>{s.l}</span>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "#374151" }}>
+              Built on LLaMA 3.3 70B · Whisper Large v3 · face-api.js · MongoDB Atlas
+            </p>
           </div>
 
-          <h1 style={{ fontFamily: "'Syne', sans-serif" }} className="font-extrabold leading-[1.05] tracking-tight mb-6">
-            <span className="block text-white" style={{ fontSize: "clamp(2.2rem, 4.5vw, 3.6rem)" }}>The AI interview coach</span>
-            <span className="block" style={{
-              fontSize: "clamp(2.2rem, 4.5vw, 3.6rem)",
-              background: "linear-gradient(135deg, #6c63ff 0%, #a78bfa 50%, #60a5fa 100%)",
-              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-            }}>that reads intent.</span>
-          </h1>
-
-          <p className="text-lg leading-relaxed mb-10 max-w-2xl mx-auto" style={{ color: "#9ca3af" }}>
-            Not just what you say — but what you <em className="not-italic" style={{ color: "#e5e7eb" }}>mean</em>. A 4-layer analysis pipeline reads every answer for emotional signal, pragmatic intent, and goal drift, in real time.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-14">
-            <Link href="/register">
-              <button className="group flex items-center gap-2.5 px-8 py-3.5 rounded-xl font-semibold text-white transition-all duration-200 hover:-translate-y-0.5" style={{ background: "linear-gradient(135deg, #6c63ff, #8b85ff)", boxShadow: "0 0 32px rgba(108,99,255,0.35), 0 4px 16px rgba(0,0,0,0.4)" }}>
-                Start Free Session
-                <ArrowRight size={16} className="transition-transform duration-200 group-hover:translate-x-0.5" />
-              </button>
-            </Link>
-            <Link href="/login">
-              <button className="flex items-center gap-2 px-8 py-3.5 rounded-xl font-medium transition-all duration-200 hover:border-white/20" style={{ border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", background: "rgba(255,255,255,0.03)" }}>
-                Sign in
-              </button>
-            </Link>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-3 mb-10">
-            {[
-              { v: "4", l: "MLIM Layers" }, { v: "8", l: "Intent Labels" },
-              { v: "7", l: "Emotion Axes" }, { v: "2", l: "Groq Models" },
-            ].map((s) => (
-              <div key={s.l} className="px-5 py-2.5 rounded-xl text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                <span style={{ fontFamily: "'Syne', sans-serif", color: "#6c63ff" }} className="font-bold text-xl block leading-none mb-0.5">{s.v}</span>
-                <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "#6b7280" }}>{s.l}</span>
+          <div className="rounded-2xl p-6" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#f87171] animate-pulse" />
+                <span className="text-[10px] font-mono uppercase tracking-[0.18em]" style={{ color: "#6b7280" }}>Live Signal Console</span>
               </div>
-            ))}
+              <span className="text-[10px] font-mono" style={{ color: "#374151" }}>session_04</span>
+            </div>
+
+            <div className="space-y-5 mb-6">
+              {mlimLayers.map((layer, i) => (
+                <div key={layer.id}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-mono uppercase tracking-widest" style={{ color: activeLayer === i ? layer.color : "#4b5563" }}>{layer.label}</span>
+                    <span className="text-[10px] font-mono" style={{ color: "#374151" }}>{layer.name}</span>
+                  </div>
+                  <div className="flex items-end gap-[3px] h-7">
+                    {Array.from({ length: 36 }).map((_, j) => (
+                      <span key={j} className="w-[3px] rounded-full flex-shrink-0" style={{
+                        height: "100%",
+                        background: layer.color,
+                        opacity: activeLayer === i ? 0.5 + (j % 5) * 0.1 : 0.15,
+                        animation: `signal-pulse ${0.8 + (j % 4) * 0.15}s ease-in-out ${j * 0.04}s infinite`,
+                      }} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded-xl px-4 py-3 flex items-center justify-between" style={{ background: "rgba(108,99,255,0.06)", border: "1px solid rgba(108,99,255,0.15)" }}>
+              <span className="text-xs" style={{ color: "#9ca3af" }}>Detected intent</span>
+              <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ color: intents[0].color, background: `${intents[0].color}1a` }}>
+                {intents[0].label} · {intents[0].pct}%
+              </span>
+            </div>
           </div>
-
-          <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "#374151" }}>
-            Built on LLaMA 3.3 70B · Whisper Large v3 · face-api.js · MongoDB Atlas
-          </p>
-        </div>
-
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-bounce">
-          <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "#374151" }}>Scroll</span>
-          <ChevronDown size={14} style={{ color: "#374151" }} />
         </div>
       </section>
 

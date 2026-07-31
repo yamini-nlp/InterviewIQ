@@ -170,13 +170,13 @@ export function Navbar() {
 
       <Link href="/" className="flex shrink-0 items-center gap-2.5">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent">
-          <span className="text-sm font-bold leading-none text-white">IQ</span>
+          <span className="text-sm font-bold leading-none text-white">?</span>
         </div>
         <span
           style={{ fontFamily: "'Syne', sans-serif" }}
           className={cn("hidden text-lg font-bold text-neutral-900 sm:inline")}
         >
-          RoleReady?
+          RoleReady
         </span>
       </Link>
 

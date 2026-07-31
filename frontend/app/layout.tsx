@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ToastProvider, Toaster } from "@/components/ui/Toast";
-import { Navbar } from "@/components/layout/Navbar";
-import { Sidebar, SidebarProvider } from "@/components/layout/Sidebar";
+import { AppShell } from "@/components/layout/AppShell";
 
 export const metadata: Metadata = {
   title: "RoleReady — AI Interview Coach",
@@ -40,15 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="bg-neutral-50 text-neutral-900 font-sans m-0">
         <AuthProvider>
           <ToastProvider>
-            <SidebarProvider>
-              <div className="flex min-h-screen">
-                <Sidebar />
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <Navbar />
-                  <main className="flex-1">{children}</main>
-                </div>
-              </div>
-            </SidebarProvider>
+            <AppShell>{children}</AppShell>
             <Toaster />
           </ToastProvider>
         </AuthProvider>
