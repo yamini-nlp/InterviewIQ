@@ -119,8 +119,8 @@ export default function Home() {
             </div>
 
             <h1 style={{ fontFamily: "'Syne', sans-serif" }} className="font-extrabold leading-[1.05] tracking-tight mb-6">
-              <span className="block text-white" style={{ fontSize: "clamp(2rem, 4vw, 3.4rem)" }}>Every answer says</span>
-              <span className="block text-white" style={{ fontSize: "clamp(2rem, 4vw, 3.4rem)" }}>two things at once.</span>
+              <span className="block text-white" style={{ fontSize: "clamp(1rem, 2vw, 3rem)" }}>Every answer says</span>
+              <span className="block text-white" style={{ fontSize: "clamp(1rem, 1vw, 3rem)" }}>two things at once.</span>
               <span className="block" style={{
                 fontSize: "clamp(2rem, 4vw, 3.4rem)",
                 background: "linear-gradient(135deg, #6c63ff 0%, #a78bfa 50%, #60a5fa 100%)",
