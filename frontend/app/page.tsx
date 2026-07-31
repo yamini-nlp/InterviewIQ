@@ -108,23 +108,16 @@ export default function Home() {
         }} />
         <div className="absolute top-[10%] right-[-10%] w-[720px] h-[720px] rounded-full pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(108,99,255,0.1) 0%, transparent 70%)" }} />
 
-        <div className="relative z-10 max-w-7xl mx-auto grid lg:grid-cols-[1.1fr_0.9fr] gap-16 items-center w-full">
-          <div>
-            <div className="inline-flex items-center gap-2.5 mb-7 px-4 py-2 rounded-full border" style={{ borderColor: "rgba(108,99,255,0.25)", background: "rgba(108,99,255,0.07)" }}>
-              <span className="w-1.5 h-1.5 rounded-full bg-[#6c63ff] animate-pulse" />
-              <span className="text-[11px] font-mono font-semibold tracking-[0.18em] uppercase" style={{ color: "#a78bfa" }}>
-                ROLE READY ?
-              </span>
-            </div>
 
-            <h1 style={{ fontFamily: "'Syne', sans-serif" }} className="font-extrabold leading-[1.05] tracking-tight mb-6">
-              <span className="block text-white" style={{ fontSize: "clamp(2.2rem, 4.5vw, 3.6rem)" }}>The AI interview coach</span>
-              <span className="block" style={{
-                fontSize: "clamp(2.2rem, 4.5vw, 3.6rem)",
-                background: "linear-gradient(135deg, #6c63ff 0%, #a78bfa 50%, #60a5fa 100%)",
-                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-              }}>that reads intent.</span>
-            </h1>
+           <h1 style={{ fontFamily: "'Syne', sans-serif" }} className="font-extrabold leading-[1.05] tracking-tight mb-6">
+          <span className="block text-white" style={{ fontSize: "clamp(2.6rem, 5.5vw, 4.2rem)" }}>Role Ready?</span>
+          <span className="block text-white mt-3" style={{ fontSize: "clamp(1.4rem, 2.6vw, 2rem)" }}>The AI interview coach</span>
+          <span className="block mt-1" style={{
+          fontSize: "clamp(1.4rem, 2.6vw, 2rem)",
+          background: "linear-gradient(135deg, #6c63ff 0%, #a78bfa 50%, #60a5fa 100%)",
+          WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+        }}>that reads intent.</span>
+        </h1>
 
             <p className="text-lg leading-relaxed mb-10 max-w-xl" style={{ color: "#9ca3af" }}>
               Not just what you say — but what you <em className="not-italic" style={{ color: "#e5e7eb" }}>mean</em>. A 4-layer analysis pipeline reads every answer for emotional signal, pragmatic intent, and goal drift, in real time.
