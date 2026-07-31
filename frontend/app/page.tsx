@@ -435,40 +435,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      <footer style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }} className="py-12 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8 mb-10">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #6c63ff, #8b85ff)" }}>
-                <span className="text-white font-bold text-xs">?</span>
-              </div>
-              <span style={{ fontFamily: "'Syne', sans-serif" }} className="font-bold text-white">RoleReady</span>
-            </div>
-            <div className="flex flex-wrap gap-6">
-              {[
-                { href: "/register", label: "Get Started" },
-                { href: "/login", label: "Sign In" },
-                { href: "/setup", label: "New Interview" },
-                { href: "/dashboard", label: "Dashboard" },
-              ].map((link) => (
-                <Link key={link.href} href={link.href} className="text-xs transition-colors hover:text-white" style={{ color: "#4b5563" }}>
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-          </div>
-          <div style={{ height: "1px", background: "rgba(255,255,255,0.04)" }} className="mb-8" />
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <p className="text-[11px] font-mono" style={{ color: "#374151" }}>
-              MLIM Framework · Affective Signal Layer · Pragmatic Encoding · Goal-State Tracking · Intent Fusion
-            </p>
-            <p className="text-[11px] font-mono" style={{ color: "#374151" }}>
-              Powered by Groq · face-api.js · Whisper
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
