@@ -113,7 +113,7 @@ export default function Home() {
             <div className="inline-flex items-center gap-2.5 mb-7 px-4 py-2 rounded-full border" style={{ borderColor: "rgba(108,99,255,0.25)", background: "rgba(108,99,255,0.07)" }}>
               <span className="w-1.5 h-1.5 rounded-full bg-[#6c63ff] animate-pulse" />
               <span className="text-[11px] font-mono font-semibold tracking-[0.18em] uppercase" style={{ color: "#a78bfa" }}>
-                Multi-Layer Intent Modeling · Groq-Powered
+                ROLE READY ?
               </span>
             </div>
 
