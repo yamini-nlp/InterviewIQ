@@ -1,8 +1,10 @@
 "use client";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCamera } from "@/hooks/useCamera";
-import { VideoOff, PauseCircle } from "lucide-react";
+import { VideoOff, PauseCircle, CameraOff } from "lucide-react";
 import { MLIMAnalysis } from "@/types/mlim";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 
 export interface FaceDetectionData {
   x: number; y: number; width: number; height: number;
@@ -32,21 +34,37 @@ export function VideoPanel({ isSpeaking = false, mlimAnalysis = null, mlimAnalyz
   const onFaceDataRef = useRef(onFaceData);
   useEffect(() => { onFaceDataRef.current = onFaceData; }, [onFaceData]);
 
-  useEffect(() => { startCamera(); return () => { stopCamera(); }; }, []);
+  const [recAnnouncement, setRecAnnouncement] = useState("");
+  const wasRecordingRef = useRef(false);
+
+  useEffect(() => { startCamera(); return () => { stopCamera(); }; }, [startCamera, stopCamera]);
 
   useEffect(() => {
+    const isCurrentlyRecording = active && !suspended;
+    if (isCurrentlyRecording !== wasRecordingRef.current) {
+      wasRecordingRef.current = isCurrentlyRecording;
+      setRecAnnouncement(isCurrentlyRecording ? "Recording started" : "Recording paused");
+    }
+  }, [active, suspended]);
+
+  useEffect(() => {
+    let cancelled = false;
     const load = async () => {
       try {
         const faceapi = await import("face-api.js");
+        if (cancelled) return;
         faceApiRef.current = faceapi;
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri("/models"),
           faceapi.nets.faceExpressionNet.loadFromUri("/models"),
         ]);
-        setModelsLoaded(true);
-      } catch {}
+        if (!cancelled) setModelsLoaded(true);
+      } catch {
+        // Face detection is an enhancement; the interview still works without it.
+      }
     };
     load();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -101,39 +119,68 @@ export function VideoPanel({ isSpeaking = false, mlimAnalysis = null, mlimAnalyz
     };
     detect();
     return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
-  }, [active, modelsLoaded, suspended]);
+  }, [active, modelsLoaded, suspended, videoRef]);
 
   return (
-    <div className="relative rounded-2xl overflow-hidden bg-night-800 border border-white/5 w-full h-full">
+    <div className="relative rounded-2xl overflow-hidden bg-night-800 border border-white/5 shadow-lg w-full h-full">
       <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover scale-x-[-1]" />
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" style={{ transform: "none" }} />
 
+      <span className="sr-only" role="status" aria-live="polite">{recAnnouncement}</span>
+
       {suspended && (
         <div className="absolute inset-0 bg-night-900/95 flex flex-col items-center justify-center gap-3 z-20">
-          <PauseCircle size={36} className="text-red-400" />
-          <p className="text-sm text-red-400 font-mono font-bold">CAMERA SUSPENDED</p>
-          <p className="text-xs text-gray-500 font-mono">Return to window to resume</p>
+          <PauseCircle size={36} className="text-error-400" />
+          <p className="text-sm text-error-400 font-mono font-bold">CAMERA SUSPENDED</p>
+          <p className="text-xs text-neutral-500 font-mono">Return to window to resume</p>
         </div>
       )}
 
-      {!active && !suspended && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-gray-500 bg-night-800">
-          <VideoOff size={32} />
-          <p className="text-sm">{error || "Starting camera..."}</p>
+      {!active && !suspended && error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-night-800 z-20">
+          <ErrorState
+            icon={CameraOff}
+            message={error}
+            className="text-white [&_p]:text-white [&_h3]:text-white"
+          />
+        </div>
+      )}
+
+      {!active && !suspended && !error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-night-800 z-20">
+          <EmptyState
+            icon={VideoOff}
+            title="Starting camera..."
+            description="Waiting for camera access"
+            className="text-white [&_h3]:text-white [&_p]:text-neutral-400"
+          />
+        </div>
+      )}
+
+      {active && !suspended && (
+        <div
+          className="absolute top-2 right-2 z-10 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-lg border border-white/10"
+          aria-hidden="true"
+        >
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-error-500 opacity-75" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-error-500" />
+          </span>
+          <span className="text-[9px] text-error-400 font-mono font-bold">REC</span>
         </div>
       )}
 
       {mlimAnalyzing && !suspended && (
-        <div className="absolute top-2 right-2 flex items-center gap-1.5 bg-black/70 backdrop-blur-sm px-2 py-1 rounded-lg border border-accent/20">
-          <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-          <span className="text-[9px] text-accent font-mono">ANALYZING</span>
+        <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/70 backdrop-blur-sm px-2 py-1 rounded-lg border border-primary-500/20">
+          <div className="w-1.5 h-1.5 rounded-full bg-primary-400 animate-pulse" />
+          <span className="text-[9px] text-primary-300 font-mono">ANALYZING</span>
         </div>
       )}
 
       {faceData && !suspended && (
-        <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded border border-white/10">
+        <div className="absolute top-9 left-2 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded border border-white/10">
           <span className="text-[9px] font-bold font-mono uppercase" style={{ color: ec(faceData.dominantExpression) }}>{faceData.dominantExpression}</span>
-          <span className="text-[8px] text-gray-500 font-mono ml-1">{(faceData.confidence * 100).toFixed(0)}%</span>
+          <span className="text-[8px] text-neutral-500 font-mono ml-1">{(faceData.confidence * 100).toFixed(0)}%</span>
         </div>
       )}
 
@@ -146,28 +193,28 @@ export function VideoPanel({ isSpeaking = false, mlimAnalysis = null, mlimAnalyz
               { l: "READINESS", v: `${(mlimAnalysis.gstl.readiness_estimate * 100).toFixed(0)}%`, c: "#10b981" },
             ].map((x) => (
               <div key={x.l} className="text-center">
-                <p className="text-[7px] text-gray-500 font-mono">{x.l}</p>
+                <p className="text-[7px] text-neutral-500 font-mono">{x.l}</p>
                 <p className="text-[10px] font-bold font-mono" style={{ color: x.c }}>{x.v}</p>
               </div>
             ))}
           </div>
           <div className="flex items-center justify-between">
             <span className="text-[8px] font-mono font-bold uppercase" style={{ color: (() => { const m: Record<string, string> = { genuine_answer: "#10b981", face_saving_assertion: "#f59e0b", sarcastic_response: "#ef4444" }; return m[mlimAnalysis.ifl.intent_label] || "#a78bfa"; })() }}>{mlimAnalysis.ifl.intent_label.replace(/_/g, " ")}</span>
-            {mlimAnalysis.gstl.stress_indicators > 0.6 && <span className="text-[8px] text-red-400 font-mono bg-red-500/15 px-1 py-0.5 rounded">HIGH STRESS</span>}
+            {mlimAnalysis.gstl.stress_indicators > 0.6 && <span className="text-[8px] text-error-400 font-mono bg-error-500/15 px-1 py-0.5 rounded">HIGH STRESS</span>}
           </div>
         </div>
       )}
 
       <div className="absolute bottom-1.5 left-2 z-10">
-        <span className="text-[8px] text-gray-400 bg-black/50 px-1 py-0.5 rounded font-mono border border-white/10">YOU</span>
+        <span className="text-[8px] text-neutral-400 bg-black/50 px-1 py-0.5 rounded font-mono border border-white/10">YOU</span>
       </div>
       {isSpeaking && !suspended && (
-        <div className="absolute bottom-1.5 right-2 z-10 flex items-center gap-1 bg-accent/20 border border-accent/30 px-1.5 py-0.5 rounded backdrop-blur-sm">
-          <div className="w-1 h-1 rounded-full bg-accent animate-pulse" />
-          <span className="text-[8px] text-accent font-mono">MIC ON</span>
+        <div className="absolute bottom-1.5 right-2 z-10 flex items-center gap-1 bg-primary-500/20 border border-primary-500/30 px-1.5 py-0.5 rounded backdrop-blur-sm">
+          <div className="w-1 h-1 rounded-full bg-primary-400 animate-pulse" />
+          <span className="text-[8px] text-primary-300 font-mono">MIC ON</span>
         </div>
       )}
-      <div className={`absolute inset-0 border-2 rounded-2xl transition-all duration-300 pointer-events-none ${isSpeaking && !suspended ? "border-accent/60" : "border-transparent"}`} />
+      <div className={`absolute inset-0 border-2 rounded-2xl transition-all duration-300 pointer-events-none ${isSpeaking && !suspended ? "border-primary-500/60" : "border-transparent"}`} />
     </div>
   );
 }

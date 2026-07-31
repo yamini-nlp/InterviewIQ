@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { loadSession, saveSession } from "@/lib/storage";
-import { evaluateAnswer, generateReport, transcribeAudio } from "@/lib/api";
+import { evaluateAnswer, generateReport } from "@/lib/api";
 import { Question, Feedback } from "@/types";
 import { Navbar } from "@/components/layout/Navbar";
 import { VideoPanel, FaceDetectionData } from "@/components/interview/VideoPanel";
@@ -10,45 +10,49 @@ import { FeedbackCard } from "@/components/interview/FeedbackCard";
 import { TimerBar } from "@/components/interview/TimerBar";
 import { InterviewerAvatar } from "@/components/interview/InterviewerAvatar";
 import { LiveAnalyticsPanel } from "@/components/interview/LiveAnalyticsPanel";
+import { AudioRecorder } from "@/components/interview/AudioRecorder";
 import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { useToast } from "@/hooks/useToast";
 import { useMLIM } from "@/hooks/useMLIM";
 import { useCheatingDetection } from "@/hooks/useCheatingDetection";
-import { Loader2, ChevronRight, AlertTriangle, Mic, MicOff, Keyboard, Volume2, VolumeX } from "lucide-react";
+import { ChevronRight, AlertTriangle, Keyboard, Mic, Volume2, VolumeX } from "lucide-react";
 
 type InputMode = "text" | "voice";
 
 export default function Practice() {
   const router = useRouter();
+  const { toast } = useToast();
   const [session, setSession] = useState<any>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answer, setAnswer] = useState("");
   const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [timerKey, setTimerKey] = useState(0);
   const [timerActive, setTimerActive] = useState(false);
   const [inputMode, setInputMode] = useState<InputMode>("text");
   const [isRecording, setIsRecording] = useState(false);
-  const [transcribing, setTranscribing] = useState(false);
   const [avatarSpeaking, setAvatarSpeaking] = useState(false);
   const [avatarText, setAvatarText] = useState("");
   const [ttsEnabled, setTtsEnabled] = useState(true);
   const [faceData, setFaceData] = useState<FaceDetectionData | null>(null);
   const [suspended, setSuspended] = useState(false);
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
   const micStreamRef = useRef<MediaStream | null>(null);
+  const lastAnswerRef = useRef("");
   const mlim = useMLIM();
-  const cheating = useCheatingDetection(true);
+  const cheating = useCheatingDetection(true, micStreamRef);
 
   useEffect(() => {
     const s = loadSession();
     if (!s) { router.push("/setup"); return; }
     setSession(s);
-    const q = s.questions[0]?.text || "";
+    const q = s.questions?.[0]?.text || "";
     const intro = `Welcome. Let's begin your ${s.job_role} practice session.\n\n${q}`;
     if (ttsEnabled) { setAvatarText(intro); setAvatarSpeaking(true); }
     else setTimerActive(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -80,7 +84,9 @@ export default function Practice() {
   const handleSubmit = useCallback(async (overrideAnswer?: string) => {
     const ans = overrideAnswer ?? answer;
     if (!ans.trim() || loading || !session) return;
+    lastAnswerRef.current = ans;
     setLoading(true);
+    setFeedbackError(null);
     setTimerActive(false);
     const questions: Question[] = session.questions;
     const current = questions[currentIndex];
@@ -90,67 +96,53 @@ export default function Practice() {
         mlim.analyze({ sessionId: session.session_id, questionId: current.id, questionText: current.text, answerText: ans, jobRole: session.job_role }),
       ]);
       setFeedback(fb);
+      toast({ title: "Answer submitted", description: "Your feedback is ready.", variant: "success" });
       const fbText = `Score: ${fb.score} out of 10. ${fb.feedback || ""}`;
       speak(fbText.slice(0, 180));
-    } catch {}
-    finally { setLoading(false); }
-  }, [answer, loading, session, currentIndex, mlim, speak]);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Could not generate feedback.";
+      setFeedbackError(message);
+      toast({ title: "Feedback failed", description: message, variant: "error" });
+    } finally {
+      setLoading(false);
+    }
+  }, [answer, loading, session, currentIndex, mlim, speak, toast]);
+
+  const retryFeedback = useCallback(() => {
+    handleSubmit(lastAnswerRef.current);
+  }, [handleSubmit]);
 
   const handleNext = useCallback(async () => {
     if (!session) return;
     const questions: Question[] = session.questions;
     const isLast = currentIndex === questions.length - 1;
     if (isLast) {
-      const report = await generateReport(session.session_id);
-      saveSession({ ...session, report });
-      router.push(`/report/${session.session_id}`);
+      try {
+        const report = await generateReport(session.session_id);
+        saveSession({ ...session, report });
+        router.push(`/report/${session.session_id}`);
+      } catch (e) {
+        toast({ title: "Could not generate report", description: e instanceof Error ? e.message : "Please try again.", variant: "error" });
+      }
     } else {
       const next = questions[currentIndex + 1];
       setCurrentIndex((i) => i + 1);
       setAnswer("");
       setFeedback(null);
+      setFeedbackError(null);
       setTimerKey((k) => k + 1);
       setTimerActive(false);
       speak(next.text);
     }
-  }, [session, currentIndex, router, speak]);
+  }, [session, currentIndex, router, speak, toast]);
 
   const handleTimeout = useCallback(() => {
     if (!feedback && answer.trim()) handleSubmit();
     else if (!feedback) handleSubmit("(No answer provided)");
   }, [feedback, answer, handleSubmit]);
 
-  const startRecording = useCallback(async () => {
-    if (isRecording || transcribing || suspended) return;
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      micStreamRef.current = stream;
-      const recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
-      chunksRef.current = [];
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      recorder.onstop = async () => {
-        if (micStreamRef.current) { micStreamRef.current.getTracks().forEach((t) => t.stop()); micStreamRef.current = null; }
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-        setTranscribing(true);
-        try { const { transcript } = await transcribeAudio(blob); if (transcript.trim()) setAnswer(transcript); }
-        catch {} finally { setTranscribing(false); }
-      };
-      mediaRecorderRef.current = recorder;
-      recorder.start();
-      setIsRecording(true);
-    } catch {}
-  }, [isRecording, transcribing, suspended]);
-
-  const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") mediaRecorderRef.current.stop();
-    setIsRecording(false);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") mediaRecorderRef.current.stop();
-      if (micStreamRef.current) micStreamRef.current.getTracks().forEach((t) => t.stop());
-    };
+  const handleTranscript = useCallback((text: string) => {
+    if (text.trim()) setAnswer(text);
   }, []);
 
   if (!session) return null;
@@ -158,13 +150,14 @@ export default function Practice() {
   const current = questions[currentIndex];
   const isLast = currentIndex === questions.length - 1;
   const summary = cheating.getSummary();
+  const showResult = loading || !!feedback || !!feedbackError;
 
   return (
     <div className="min-h-screen bg-night-950 flex flex-col overflow-hidden">
       <Navbar />
 
       {cheating.showWarning && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-red-500/90 backdrop-blur-sm text-white px-4 py-2.5 rounded-xl shadow-lg border border-red-400/50 animate-fade-in">
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-error-500/90 backdrop-blur-sm text-white px-4 py-2.5 rounded-xl shadow-lg border border-error-400/50 animate-fade-in">
           <AlertTriangle size={16} />
           <span className="text-sm font-medium">{cheating.warningMessage}</span>
         </div>
@@ -172,10 +165,10 @@ export default function Practice() {
 
       {suspended && (
         <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center gap-4">
-          <AlertTriangle size={48} className="text-red-400" />
-          <p className="text-xl font-bold text-red-400">Session Suspended</p>
-          <p className="text-gray-400 text-sm">Camera & microphone disabled. Click here or return to window.</p>
-          <button onClick={() => setSuspended(false)} className="px-6 py-2.5 bg-accent rounded-xl text-white font-medium text-sm">Resume Session</button>
+          <AlertTriangle size={48} className="text-error-400" />
+          <p className="text-xl font-bold text-error-400">Session Suspended</p>
+          <p className="text-neutral-400 text-sm">Camera & microphone disabled. Click here or return to window.</p>
+          <Button onClick={() => setSuspended(false)} className="active:scale-95">Resume Session</Button>
         </div>
       )}
 
@@ -193,103 +186,100 @@ export default function Practice() {
               <div className="absolute top-2 right-2 w-32 h-24 rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-night-800 z-20">
                 <InterviewerAvatar text={avatarText} speaking={avatarSpeaking && !suspended} onSpeakEnd={handleAvatarEnd} />
                 <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2">
-                  <span className="text-[7px] text-gray-500 bg-black/50 px-1 py-0.5 rounded font-mono">AI INTERVIEWER</span>
+                  <span className="text-[7px] text-neutral-500 bg-black/50 px-1 py-0.5 rounded font-mono">AI INTERVIEWER</span>
                 </div>
               </div>
               <button
                 onClick={() => setTtsEnabled((v) => !v)}
-                className={`absolute top-2 left-2 z-20 flex items-center gap-1 px-2 py-1 rounded-lg text-[8px] font-mono border backdrop-blur-sm transition-all ${ttsEnabled ? "bg-accent/20 border-accent/30 text-accent" : "bg-black/50 border-white/10 text-gray-500"}`}
+                className={`absolute top-2 left-2 z-20 flex items-center gap-1 px-2 py-1 rounded-lg text-[8px] font-mono border backdrop-blur-sm transition-all active:scale-95 ${ttsEnabled ? "bg-primary-500/20 border-primary-500/30 text-primary-300" : "bg-black/50 border-white/10 text-neutral-500"}`}
               >
                 {ttsEnabled ? <><Volume2 size={9} /> TTS ON</> : <><VolumeX size={9} /> TTS OFF</>}
               </button>
             </div>
 
-            <div className="glass rounded-2xl flex-shrink-0" style={{ height: "240px" }}>
-              <div className="px-4 pt-3 pb-2 border-b border-white/5">
-                <div className="flex items-start gap-2">
-                  <span className="text-[9px] text-gray-600 font-mono mt-0.5 flex-shrink-0">Q{currentIndex + 1}/{questions.length}</span>
-                  <p className="text-sm text-gray-200 leading-snug line-clamp-2">{current?.text}</p>
+            <div className="glass rounded-2xl flex-shrink-0 flex flex-col overflow-hidden transition-shadow duration-300 hover:shadow-lg" style={{ maxHeight: "46vh" }}>
+              <div className="px-4 pt-3 pb-2 border-b border-white/5 flex-shrink-0">
+                <div className="flex items-start gap-2 mb-1.5">
+                  <span className="text-[9px] text-neutral-600 font-mono mt-0.5 flex-shrink-0">Q{currentIndex + 1}/{questions.length}</span>
+                  <p className="text-sm text-neutral-200 leading-snug line-clamp-2">{current?.text}</p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Badge text={current.category} type="category" size="sm" />
+                  <Badge text={current.difficulty} type="difficulty" size="sm" />
                 </div>
               </div>
 
-              {!feedback ? (
-                <div className="px-4 py-2.5 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex gap-1.5">
-                      <button onClick={() => setInputMode("text")} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-mono border transition-all ${inputMode === "text" ? "bg-accent/20 border-accent/30 text-accent" : "bg-white/5 border-white/10 text-gray-500"}`}>
-                        <Keyboard size={9} /> TEXT
-                      </button>
-                      <button onClick={() => setInputMode("voice")} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-mono border transition-all ${inputMode === "voice" ? "bg-accent/20 border-accent/30 text-accent" : "bg-white/5 border-white/10 text-gray-500"}`}>
-                        <Mic size={9} /> VOICE
-                      </button>
+              <div className="overflow-y-auto">
+                {!showResult ? (
+                  <div className="px-4 py-2.5 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex gap-1.5">
+                        <button onClick={() => setInputMode("text")} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-mono border transition-all active:scale-95 ${inputMode === "text" ? "bg-primary-500/20 border-primary-500/30 text-primary-300" : "bg-white/5 border-white/10 text-neutral-500"}`}>
+                          <Keyboard size={9} /> TEXT
+                        </button>
+                        <button onClick={() => setInputMode("voice")} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-mono border transition-all active:scale-95 ${inputMode === "voice" ? "bg-primary-500/20 border-primary-500/30 text-primary-300" : "bg-white/5 border-white/10 text-neutral-500"}`}>
+                          <Mic size={9} /> VOICE
+                        </button>
+                      </div>
+                      {timerActive && (
+                        <div className="w-28">
+                          <TimerBar key={timerKey} duration={120} onTimeout={handleTimeout} />
+                        </div>
+                      )}
                     </div>
-                    {timerActive && (
-                      <div className="w-28">
-                        <TimerBar key={timerKey} duration={120} onTimeout={handleTimeout} />
+
+                    {inputMode === "text" ? (
+                      <div className="flex gap-2">
+                        <textarea
+                          value={answer}
+                          onChange={(e) => setAnswer(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && answer.trim()) { e.preventDefault(); handleSubmit(); } }}
+                          placeholder="Type your answer... (Enter to submit)"
+                          rows={3}
+                          disabled={loading || suspended}
+                          className="flex-1 rounded-xl px-3 py-2 text-sm resize-none disabled:opacity-50"
+                        />
+                        <Button onClick={() => handleSubmit()} disabled={!answer.trim() || loading || suspended} loading={loading} className="flex-shrink-0 px-3 active:scale-95">
+                          Submit
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <AudioRecorder
+                            onTranscript={handleTranscript}
+                            disabled={loading || suspended}
+                            onRecordingChange={setIsRecording}
+                            streamRef={micStreamRef}
+                          />
+                          {answer && !isRecording && (
+                            <Button onClick={() => handleSubmit()} disabled={loading} loading={loading} className="flex-shrink-0 px-3 active:scale-95">Submit</Button>
+                          )}
+                        </div>
+                        {answer && (
+                          <div className="bg-white/5 rounded-xl px-3 py-1.5 border border-white/10">
+                            <p className="text-xs text-neutral-300 line-clamp-2">{answer}</p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-
-                  {inputMode === "text" ? (
-                    <div className="flex gap-2">
-                      <textarea
-                        value={answer}
-                        onChange={(e) => setAnswer(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && answer.trim()) { e.preventDefault(); handleSubmit(); } }}
-                        placeholder="Type your answer... (Enter to submit)"
-                        rows={3}
-                        disabled={loading || !!feedback || suspended}
-                        className="flex-1 rounded-xl px-3 py-2 text-sm resize-none disabled:opacity-50"
-                      />
-                      <Button onClick={() => handleSubmit()} disabled={!answer.trim() || loading || !!feedback || suspended} className="flex-shrink-0 px-3">
-                        {loading ? <Loader2 size={14} className="animate-spin" /> : "Submit"}
+                ) : (
+                  <div className="px-4 py-3 space-y-3">
+                    <FeedbackCard feedback={feedback} loading={loading} error={feedbackError} onRetry={retryFeedback} />
+                    {feedback && (
+                      <Button
+                        onClick={handleNext}
+                        disabled={avatarSpeaking}
+                        className="w-full active:scale-95"
+                        size="sm"
+                      >
+                        {avatarSpeaking ? <><div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse mr-2" />Speaking...</> : isLast ? "View Report" : <>Next <ChevronRight size={13} /></>}
                       </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {transcribing ? (
-                        <div className="flex items-center gap-2 text-sm text-gray-400">
-                          <Loader2 size={13} className="animate-spin" /> Transcribing...
-                        </div>
-                      ) : (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={isRecording ? stopRecording : startRecording}
-                            disabled={!!feedback || loading || suspended}
-                            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border transition-all ${isRecording ? "bg-red-500/20 border-red-500/40 text-red-400 animate-pulse" : "bg-accent/15 border-accent/30 text-accent hover:bg-accent/25"}`}
-                          >
-                            {isRecording ? <><MicOff size={13} /> Stop</> : <><Mic size={13} /> Record</>}
-                          </button>
-                          {answer && !isRecording && (
-                            <Button onClick={() => handleSubmit()} disabled={loading || !!feedback} className="flex-shrink-0 px-3">Submit</Button>
-                          )}
-                        </div>
-                      )}
-                      {answer && (
-                        <div className="bg-white/5 rounded-xl px-3 py-1.5 border border-white/10">
-                          <p className="text-xs text-gray-300 line-clamp-2">{answer}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="px-4 py-2.5 space-y-2 overflow-y-auto" style={{ maxHeight: "180px" }}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[9px] text-gray-500 font-mono">SCORE</span>
-                    <span className="text-sm font-bold" style={{ color: feedback.score >= 7 ? "#10b981" : feedback.score >= 5 ? "#f59e0b" : "#ef4444" }}>{feedback.score}/10</span>
+                    )}
                   </div>
-                  {feedback.feedback && <p className="text-xs text-gray-400 line-clamp-3">{feedback.feedback}</p>}
-                  <Button
-                    onClick={handleNext}
-                    disabled={avatarSpeaking}
-                    className="w-full"
-                    size="sm"
-                  >
-                    {avatarSpeaking ? <><div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse mr-2" />Speaking...</> : isLast ? "View Report" : <>Next <ChevronRight size={13} /></>}
-                  </Button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
 

@@ -15,9 +15,14 @@ export function InterviewerAvatar({ text, speaking, onSpeakEnd }: Props) {
   const [blinkState, setBlinkState] = useState(1);
   const blinkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mouthTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const speakTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
   const stopSpeech = useCallback(() => {
+    if (speakTimeoutRef.current) {
+      clearTimeout(speakTimeoutRef.current);
+      speakTimeoutRef.current = null;
+    }
     if (synthRef.current) synthRef.current.cancel();
     if (mouthTimer.current) clearInterval(mouthTimer.current);
     setMouthOpen(0);
@@ -71,7 +76,10 @@ export function InterviewerAvatar({ text, speaking, onSpeakEnd }: Props) {
         setIsSpeaking(false);
         onSpeakEnd?.();
       };
-      setTimeout(() => synthRef.current?.speak(utterance), 400);
+      speakTimeoutRef.current = setTimeout(() => {
+        speakTimeoutRef.current = null;
+        synthRef.current?.speak(utterance);
+      }, 400);
     };
   
     const voices = synthRef.current.getVoices();
@@ -179,14 +187,18 @@ export function InterviewerAvatar({ text, speaking, onSpeakEnd }: Props) {
   }, [mouthOpen, blinkState, isSpeaking]);
 
   return (
-    <div className="relative w-full h-full flex items-center justify-center bg-night-800">
+    <div className="relative w-full h-full flex items-center justify-center bg-night-800 rounded-2xl overflow-hidden">
       <canvas ref={canvasRef} width={280} height={280} className="w-full h-full object-contain" />
       {isSpeaking && (
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-accent/20 border border-accent/30 px-2 py-1 rounded-full">
+        <div
+          className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-primary-500/20 border border-primary-500/30 px-2 py-1 rounded-full"
+          role="status"
+          aria-live="polite"
+        >
           {[0, 1, 2].map((i) => (
-            <div key={i} className="w-1 rounded-full bg-accent" style={{ height: "12px", animation: `sb 0.6s ease-in-out ${i * 0.15}s infinite alternate` }} />
+            <div key={i} className="w-1 rounded-full bg-primary-400" style={{ height: "12px", animation: `sb 0.6s ease-in-out ${i * 0.15}s infinite alternate` }} />
           ))}
-          <span className="text-[9px] text-accent font-mono ml-1">SPEAKING</span>
+          <span className="text-[9px] text-primary-300 font-mono ml-1">SPEAKING</span>
         </div>
       )}
       <style>{`@keyframes sb { from { transform: scaleY(0.3); } to { transform: scaleY(1); } }`}</style>

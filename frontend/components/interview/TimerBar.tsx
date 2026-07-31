@@ -1,26 +1,74 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Progress } from "@/components/ui/Progress";
+import { cn } from "@/lib/utils";
 
-export function TimerBar({ duration = 120, onTimeout }: { duration?: number; onTimeout?: () => void }) {
+interface TimerBarProps {
+  duration?: number;
+  onTimeout?: () => void;
+  className?: string;
+}
+
+const ANNOUNCE_THRESHOLDS = [50, 20, 5];
+
+export function TimerBar({ duration = 120, onTimeout, className }: TimerBarProps) {
   const [seconds, setSeconds] = useState(duration);
+  const [announcement, setAnnouncement] = useState("");
+  const onTimeoutRef = useRef(onTimeout);
+  const announcedRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
-    if (seconds <= 0) { onTimeout?.(); return; }
-    const t = setTimeout(() => setSeconds((s) => s - 1), 1000);
+    onTimeoutRef.current = onTimeout;
+  }, [onTimeout]);
+
+  useEffect(() => {
+    setSeconds(duration);
+    announcedRef.current = new Set();
+  }, [duration]);
+
+  useEffect(() => {
+    if (seconds <= 0) {
+      onTimeoutRef.current?.();
+      return;
+    }
+    const t = setTimeout(() => setSeconds((s) => Math.max(0, s - 1)), 1000);
     return () => clearTimeout(t);
-  }, [seconds, onTimeout]);
+  }, [seconds]);
+
+  useEffect(() => {
+    const pct = Math.round((seconds / duration) * 100);
+    for (const threshold of ANNOUNCE_THRESHOLDS) {
+      if (pct <= threshold && !announcedRef.current.has(threshold)) {
+        announcedRef.current.add(threshold);
+        const mm = Math.floor(seconds / 60);
+        const ss = seconds % 60;
+        const timeLabel = mm > 0 ? `${mm} minute${mm === 1 ? "" : "s"} ${ss} second${ss === 1 ? "" : "s"}` : `${ss} second${ss === 1 ? "" : "s"}`;
+        setAnnouncement(`${timeLabel} remaining`);
+      }
+    }
+  }, [seconds, duration]);
 
   const pct = (seconds / duration) * 100;
-  const color = pct > 50 ? "from-emerald-500 to-teal-400" : pct > 25 ? "from-amber-500 to-yellow-400" : "from-red-500 to-rose-400";
+  const color = pct > 50 ? "success" : pct > 20 ? "warning" : "error";
   const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
   const ss = String(seconds % 60).padStart(2, "0");
 
   return (
-    <div className="flex items-center gap-3">
-      <span className="font-mono text-sm text-gray-400 min-w-[48px]">{mm}:{ss}</span>
-      <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
-        <div className={`h-full bg-gradient-to-r ${color} rounded-full transition-all duration-1000`} style={{ width: `${pct}%` }} />
-      </div>
+    <div className={cn("flex items-center gap-3", className)}>
+      <span
+        className={cn(
+          "font-mono text-sm min-w-[48px] tabular-nums transition-colors duration-500",
+          color === "success" && "text-success-400",
+          color === "warning" && "text-warning-400",
+          color === "error" && "text-error-400"
+        )}
+      >
+        {mm}:{ss}
+      </span>
+      <Progress value={pct} max={100} size="sm" color={color} className="flex-1" />
+      <span className="sr-only" role="status" aria-live="polite">
+        {announcement}
+      </span>
     </div>
   );
 }
