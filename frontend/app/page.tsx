@@ -1,49 +1,44 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/Button";
-import { Navbar } from "@/components/layout/Navbar";
 import {
-  Brain, Zap, Shield, BarChart2, Mic, Video, ArrowRight,
-  Layers, GitBranch, Target, Activity, Eye, Lock,
-  ChevronDown, ChevronRight, Play, Circle, Check
+  ArrowRight, GitBranch, Target, Activity, Eye, Shield, Mic, Check, ChevronDown,
 } from "lucide-react";
 
 const mlimLayers = [
   {
     id: "01", label: "ASL", name: "Affective Signal Layer",
     desc: "Valence-arousal extraction, sentiment polarity classification, emotional uncertainty estimation, and affective masking detection across voice transcripts and typed responses.",
-    color: "#a78bfa", dot: "bg-purple-400",
+    color: "#a78bfa",
     tags: ["Valence", "Arousal", "Masking Detection", "Sentiment Polarity"],
   },
   {
     id: "02", label: "PEL", name: "Pragmatic Encoding Layer",
-    desc: "Context-aware transformer encoding with Austin/Searle speech act classification, Gricean implicature analysis, sarcasm detection, and pragmatic inversion flagging.",
-    color: "#60a5fa", dot: "bg-blue-400",
-    tags: ["Speech Acts", "Sarcasm", "Gricean Implicature", "Pragmatic Inversion"],
+    desc: "Austin/Searle speech act classification, Gricean maxim-violation analysis, sarcasm detection, and pragmatic inversion flagging, resolved against the prior conversation turns.",
+    color: "#60a5fa",
+    tags: ["Speech Acts", "Sarcasm", "Gricean Maxims", "Pragmatic Inversion"],
   },
   {
     id: "03", label: "GSTL", name: "Goal-State Tracking Layer",
-    desc: "POMDP-inspired recurrent belief estimator tracking evolving user goals across the full session — detecting drift, trajectory shifts, stress escalation, and readiness evolution.",
-    color: "#34d399", dot: "bg-emerald-400",
-    tags: ["POMDP Belief", "Goal Drift", "Trajectory", "Engagement"],
+    desc: "Hidden Markov belief estimator tracking evolving candidate goals across the full session via a Bayesian update over a fixed transition matrix — detecting drift, trajectory shifts, and stress escalation.",
+    color: "#34d399",
+    tags: ["HMM Belief", "Goal Drift", "Trajectory", "Engagement"],
   },
   {
     id: "04", label: "IFL", name: "Intent Fusion Layer",
-    desc: "Attention-weighted multi-source fusion integrating all layer outputs with longitudinal history. Produces softmax intent prediction, entropy uncertainty score, and clarification trigger.",
-    color: "#fb923c", dot: "bg-orange-400",
-    tags: ["Attention Fusion", "Intent Prediction", "Entropy", "Clarification Gate"],
+    desc: "Fuses ASL, PEL, and GSTL outputs with longitudinal session history into a final intent label across 8 categories, with entropy-based uncertainty scoring and automatic clarification triggering.",
+    color: "#fb923c",
+    tags: ["Signal Fusion", "Intent Prediction", "Entropy", "Clarification Gate"],
   },
 ];
 
 const capabilities = [
-  { icon: Activity, title: "Real-Time Affect Engine", desc: "Valence-arousal estimation, stress indicators, emotional masking detection running on every submitted answer.", accent: "#a78bfa" },
-  { icon: Eye, title: "Facial Expression Analysis", desc: "Live micro-expression detection across 7 emotion dimensions via face-api.js, fused into the MLIM affective pipeline.", accent: "#60a5fa" },
-  { icon: GitBranch, title: "Goal-State Belief Tracker", desc: "POMDP belief state maintained across the full interview session — tracking goal drift and trajectory shifts.", accent: "#34d399" },
-  { icon: Shield, title: "Session Integrity Monitor", desc: "Tab-switch, window-blur, copy-paste flagging, and camera suspension on focus loss with per-session integrity scoring.", accent: "#fb923c" },
-  { icon: Mic, title: "Whisper Voice Transcription", desc: "Groq Whisper-powered real-time transcription feeding the same MLIM pipeline as typed text responses.", accent: "#f472b6" },
-  { icon: Target, title: "Entropy Clarification Gate", desc: "Automatic clarification question injection when IFL entropy exceeds threshold — the interviewer asks follow-up intelligently.", accent: "#38bdf8" },
+  { icon: Activity, title: "Real-Time Affect Engine", desc: "Valence-arousal estimation, stress indicators, and affective-masking detection computed on every submitted answer.", accent: "#a78bfa" },
+  { icon: Eye, title: "Facial Expression Analysis", desc: "Live detection across 7 emotion classes via face-api.js, fused into the MLIM affective pipeline alongside your typed or spoken answer.", accent: "#60a5fa" },
+  { icon: GitBranch, title: "Goal-State Belief Tracker", desc: "An HMM belief distribution maintained across the full interview session, tracking goal drift and trajectory shifts turn by turn.", accent: "#34d399" },
+  { icon: Shield, title: "Session Integrity Monitor", desc: "Tab-switch, window-blur, copy-paste, right-click, and DevTools detection, with camera/mic suspension and an integrity score in your final report.", accent: "#fb923c" },
+  { icon: Mic, title: "Whisper Voice Transcription", desc: "Groq Whisper Large v3 transcribes your recorded answer and feeds the identical text into the same MLIM pipeline as typed responses.", accent: "#f472b6" },
+  { icon: Target, title: "Entropy Clarification Gate", desc: "When IFL uncertainty crosses threshold, the interviewer automatically asks a targeted follow-up instead of moving on blind.", accent: "#38bdf8" },
 ];
 
 const intents = [
@@ -54,13 +49,22 @@ const intents = [
   { label: "committed_retry", pct: 4, color: "#60a5fa" },
 ];
 
+const steps = [
+  { n: "01", title: "Configure your session", desc: "Select your target role and paste the job description. The Groq-powered question engine generates fresh technical, behavioral, and scenario questions for that exact role.", color: "#6c63ff" },
+  { n: "02", title: "AI interviewer takes over", desc: "An animated avatar reads each question aloud through your browser's speech synthesis, with mouth movement synced to speech. Camera and microphone activate for the session.", color: "#a78bfa" },
+  { n: "03", title: "Answer by voice or text", desc: "Speak naturally into your mic or type your answer. Groq Whisper Large v3 transcribes voice in real time. Both inputs feed the identical MLIM pipeline.", color: "#60a5fa" },
+  { n: "04", title: "MLIM pipeline processes", desc: "ASL and PEL run first. GSTL updates the HMM goal belief state. IFL fuses every signal with your session history into a final intent label.", color: "#34d399" },
+  { n: "05", title: "Live analytics refresh", desc: "In Practice mode, a structured feedback card scores your answer. In Simulation mode, the interviewer stays neutral and evaluation runs after you finish.", color: "#fb923c" },
+  { n: "06", title: "Report generated", desc: "Your session closes with a full breakdown: overall score, weak areas, recommended topics, per-question detail, and an MLIM summary — exportable as PDF.", color: "#f472b6" },
+];
+
 const faqs = [
-  { q: "What is MLIM?", a: "Multi-Layer Intent Modeling is a 4-layer NLP architecture that processes each answer through Affective Signal analysis, Pragmatic Encoding, Goal-State Tracking, and Intent Fusion to infer the true communicative intent behind what is being said — not just the surface sentiment." },
-  { q: "How is this different from basic sentiment analysis?", a: "MLIM extracts valence-arousal vectors, detects affective masking, classifies speech acts using Austin/Searle theory, maintains a POMDP belief state over user goals, and fuses all signals with entropy-based uncertainty scoring. Sentiment analysis gives you positive/negative. MLIM gives you intent." },
-  { q: "What happens if I switch tabs during an interview?", a: "Camera and microphone streams are immediately suspended, analysis pauses, and a session integrity event is logged. Your integrity score is updated and reflected in your final report when the session completes." },
-  { q: "Can I answer by voice?", a: "Yes. A Groq Whisper-powered transcription pipeline converts your audio in real time and feeds it directly into the MLIM evaluation pipeline — identical to typed responses." },
-  { q: "What does the live analytics panel show?", a: "All 4 MLIM layer outputs update after every answer: ASL sentiment/valence/arousal/masking, PEL speech act and pragmatic flags, GSTL engagement/stress/goal distribution/trajectory, and IFL intent label/entropy/failure modes." },
-  { q: "Do I need to create an account?", a: "Yes — accounts keep your sessions, reports, and MLIM analytics completely private and isolated. No data is shared between users." },
+  { q: "What is MLIM?", a: "Multi-Layer Intent Modeling is a 4-layer pipeline that processes each answer through an Affective Signal Layer, Pragmatic Encoding Layer, Goal-State Tracking Layer, and Intent Fusion Layer to infer the communicative intent behind what's being said — not just surface sentiment." },
+  { q: "How is this different from basic sentiment analysis?", a: "MLIM extracts valence-arousal vectors, detects affective masking, classifies speech acts using Austin/Searle theory, maintains an HMM belief state over your goals across the session, and fuses all of it with entropy-based uncertainty scoring. Sentiment analysis gives you positive or negative. MLIM gives you intent." },
+  { q: "What happens if I switch tabs during an interview?", a: "Camera and microphone are suspended immediately, the event is logged, and you'll see a warning. Tab switches, window blur, copy-paste, and DevTools access all count toward your integrity score in the final report." },
+  { q: "Can I answer by voice?", a: "Yes. Groq Whisper Large v3 transcribes your recorded audio and feeds it directly into the same MLIM evaluation pipeline as a typed answer." },
+  { q: "What's the difference between Practice and Simulation mode?", a: "Practice mode gives you a structured feedback card after every answer. Simulation mode behaves like a real interviewer — brief acknowledgements only, no hints — and evaluates everything at once when the session ends." },
+  { q: "Do I need to create an account?", a: "Yes. Accounts keep your sessions, reports, and MLIM analytics isolated to you." },
 ];
 
 function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: string }) {
@@ -88,7 +92,6 @@ function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: str
 export default function Home() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [activeLayer, setActiveLayer] = useState(0);
-  const router = useRouter();
 
   useEffect(() => {
     const t = setInterval(() => setActiveLayer((i) => (i + 1) % 4), 2800);
@@ -97,38 +100,37 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#07080b] overflow-x-hidden" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-      <Navbar />
-
-      <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-20 pb-24 overflow-hidden">
+      <section className="relative min-h-[92vh] flex flex-col items-center justify-center px-6 pt-16 pb-24 overflow-hidden">
         <div className="absolute inset-0 pointer-events-none" style={{
-          backgroundImage: "linear-gradient(rgba(108,99,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(108,99,255,0.04) 1px, transparent 1px)",
+          backgroundImage: "linear-gradient(rgba(108,99,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(108,99,255,0.035) 1px, transparent 1px)",
           backgroundSize: "64px 64px",
+          maskImage: "radial-gradient(ellipse 70% 60% at 50% 30%, black 40%, transparent 100%)",
         }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[600px] rounded-full pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(108,99,255,0.09) 0%, transparent 70%)" }} />
-        <div className="absolute top-1/3 left-1/3 w-[400px] h-[400px] rounded-full pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(139,133,255,0.05) 0%, transparent 70%)" }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[640px] rounded-full pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(108,99,255,0.1) 0%, transparent 70%)" }} />
+        <div className="absolute top-[28%] left-[62%] w-[420px] h-[420px] rounded-full pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(96,165,250,0.08) 0%, transparent 70%)" }} />
 
         <div className="relative z-10 max-w-5xl mx-auto text-center">
           <div className="inline-flex items-center gap-2.5 mb-8 px-4 py-2 rounded-full border" style={{ borderColor: "rgba(108,99,255,0.25)", background: "rgba(108,99,255,0.07)" }}>
             <span className="w-1.5 h-1.5 rounded-full bg-[#6c63ff] animate-pulse" />
             <span className="text-[11px] font-mono font-semibold tracking-[0.18em] uppercase" style={{ color: "#a78bfa" }}>
-              Multi-Layer Intent Modeling · Research-Backed AI
+              Multi-Layer Intent Modeling · Groq-Powered
             </span>
           </div>
 
           <h1 style={{ fontFamily: "'Syne', sans-serif" }} className="font-extrabold leading-[1.05] tracking-tight mb-6">
-            <span className="block text-white" style={{ fontSize: "clamp(3rem, 7vw, 5.5rem)" }}>The AI interview coach</span>
+            <span className="block text-white" style={{ fontSize: "clamp(2.75rem, 7vw, 5.5rem)" }}>The AI interview coach</span>
             <span className="block" style={{
-              fontSize: "clamp(3rem, 7vw, 5.5rem)",
+              fontSize: "clamp(2.75rem, 7vw, 5.5rem)",
               background: "linear-gradient(135deg, #6c63ff 0%, #a78bfa 50%, #60a5fa 100%)",
               WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
             }}>that reads intent.</span>
           </h1>
 
           <p className="text-lg leading-relaxed mb-10 max-w-2xl mx-auto" style={{ color: "#9ca3af" }}>
-            Not just what you say — but what you <em className="not-italic" style={{ color: "#e5e7eb" }}>mean</em>. Four analytical layers process every answer to detect goals, emotional state, pragmatic intent, and behavioral consistency in real time.
+            Not just what you say — but what you <em className="not-italic" style={{ color: "#e5e7eb" }}>mean</em>. A 4-layer analysis pipeline reads every answer for emotional signal, pragmatic intent, and goal drift, in real time.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-14">
             <Link href="/register">
               <button className="group flex items-center gap-2.5 px-8 py-3.5 rounded-xl font-semibold text-white transition-all duration-200 hover:-translate-y-0.5" style={{ background: "linear-gradient(135deg, #6c63ff, #8b85ff)", boxShadow: "0 0 32px rgba(108,99,255,0.35), 0 4px 16px rgba(0,0,0,0.4)" }}>
                 Start Free Session
@@ -142,10 +144,10 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-3 mb-10">
             {[
               { v: "4", l: "MLIM Layers" }, { v: "8", l: "Intent Labels" },
-              { v: "7", l: "Emotion Axes" }, { v: "< 3s", l: "Analysis Latency" },
+              { v: "7", l: "Emotion Axes" }, { v: "2", l: "Groq Models" },
             ].map((s) => (
               <div key={s.l} className="px-5 py-2.5 rounded-xl text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
                 <span style={{ fontFamily: "'Syne', sans-serif", color: "#6c63ff" }} className="font-bold text-xl block leading-none mb-0.5">{s.v}</span>
@@ -153,6 +155,10 @@ export default function Home() {
               </div>
             ))}
           </div>
+
+          <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "#374151" }}>
+            Built on LLaMA 3.3 70B · Whisper Large v3 · face-api.js · MongoDB Atlas
+          </p>
         </div>
 
         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-bounce">
@@ -165,22 +171,19 @@ export default function Home() {
         <div className="grid lg:grid-cols-2 gap-16 items-start">
           <div className="lg:sticky lg:top-28">
             <span className="text-[10px] font-mono uppercase tracking-[0.2em] block mb-5" style={{ color: "#6c63ff" }}>Architecture</span>
-            <h2
-              className="font-bold text-white mb-5 leading-tight"
-              style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(1.8rem, 3vw, 2.5rem)" }}
-            >
+            <h2 className="font-bold text-white mb-5 leading-tight" style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(1.8rem, 3vw, 2.5rem)" }}>
               <span className="block">The 4-Layer</span>
               <span className="block" style={{ color: "#6c63ff" }}>Intent Pipeline</span>
             </h2>
             <p className="leading-relaxed mb-8" style={{ color: "#6b7280", fontSize: "0.95rem" }}>
-              Each answer passes through all four layers sequentially. ASL and PEL run in parallel, then GSTL updates the belief state, and IFL fuses everything into a final intent prediction with entropy-based uncertainty scoring.
+              Each answer passes through all four layers. ASL and PEL run first, then GSTL updates the HMM belief state, and IFL fuses everything into a final intent prediction with entropy-based uncertainty scoring.
             </p>
             <div className="space-y-3">
               {[
-                "Parallel ASL + PEL execution for low latency",
-                "POMDP belief state persisted across full session",
-                "Entropy threshold triggers clarification questions",
-                "Longitudinal history H_t fed to fusion layer",
+                "ASL and PEL run on the fast 8B model for low latency",
+                "HMM belief state persisted across the full session",
+                "Entropy threshold automatically triggers a clarification question",
+                "IFL runs on the 70B reasoning model with full session history",
               ].map((item) => (
                 <div key={item} className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "rgba(108,99,255,0.15)", border: "1px solid rgba(108,99,255,0.3)" }}>
@@ -208,8 +211,7 @@ export default function Home() {
                 >
                   <div className="flex items-start gap-4">
                     <div className="flex-shrink-0">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center font-mono font-bold text-xs"
-                        style={{ background: `${layer.color}15`, border: `1px solid ${layer.color}25`, color: layer.color }}>
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center font-mono font-bold text-xs" style={{ background: `${layer.color}15`, border: `1px solid ${layer.color}25`, color: layer.color }}>
                         {layer.id}
                       </div>
                     </div>
@@ -242,7 +244,7 @@ export default function Home() {
             <div className="rounded-2xl p-4 mt-2" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
               <div className="flex items-center gap-2 mb-3">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#6c63ff] animate-pulse" />
-                <span className="text-[9px] font-mono uppercase tracking-widest" style={{ color: "#4b5563" }}>IFL Output — Intent Distribution</span>
+                <span className="text-[9px] font-mono uppercase tracking-widest" style={{ color: "#4b5563" }}>IFL Output — Sample Intent Distribution</span>
               </div>
               <div className="space-y-2">
                 {intents.map((intent) => (
@@ -268,10 +270,10 @@ export default function Home() {
         <div className="max-w-2xl mb-16">
           <span className="text-[10px] font-mono uppercase tracking-[0.2em] block mb-5" style={{ color: "#6c63ff" }}>Capabilities</span>
           <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(1.8rem, 3vw, 2.5rem)" }} className="font-bold text-white mb-5 leading-tight">
-            Every layer of intelligence,<br />running simultaneously.
+            Every layer of intelligence,<br />running on your answer.
           </h2>
           <p style={{ color: "#6b7280", fontSize: "0.95rem" }} className="leading-relaxed">
-            From facial micro-expressions to pragmatic speech acts — the entire analysis stack activates on every answer you submit.
+            From facial expression to pragmatic speech acts — the full analysis stack activates on every answer you submit.
           </p>
         </div>
 
@@ -299,19 +301,12 @@ export default function Home() {
         <div className="text-center mb-16">
           <span className="text-[10px] font-mono uppercase tracking-[0.2em] block mb-5" style={{ color: "#6c63ff" }}>Process</span>
           <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(1.8rem, 3vw, 2.5rem)" }} className="font-bold text-white leading-tight">
-            From question to insight<br />in under three seconds.
+            From job description<br />to full assessment report.
           </h2>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
-          {[
-            { n: "01", title: "Configure your session", desc: "Select your target role and paste the job description. The Groq-powered question engine generates role-specific technical, behavioral, and scenario questions.", color: "#6c63ff" },
-            { n: "02", title: "AI interviewer takes over", desc: "An animated avatar delivers each question with Web Speech TTS and natural lip-sync. Camera and microphone activate. The session begins.", color: "#a78bfa" },
-            { n: "03", title: "Answer by voice or text", desc: "Speak naturally into your mic or type your answer. Groq Whisper transcribes voice in real time. Both inputs feed the identical MLIM pipeline.", color: "#60a5fa" },
-            { n: "04", title: "MLIM pipeline processes", desc: "ASL and PEL run in parallel. GSTL updates the goal belief state. IFL fuses all signals with longitudinal history into a final intent prediction.", color: "#34d399" },
-            { n: "05", title: "Live analytics refresh", desc: "The analytics sidebar updates with emotion vectors, intent distribution, goal drift indicators, stress scores, and entropy confidence after every answer.", color: "#fb923c" },
-            { n: "06", title: "Report generated", desc: "Your session closes with a full breakdown: per-question MLIM analysis, intent history, failure modes detected, session trajectory, and integrity score.", color: "#f472b6" },
-          ].map((step) => (
+          {steps.map((step) => (
             <div key={step.n} className="flex gap-5 p-6 rounded-2xl transition-all duration-200 hover:border-white/10" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
               <div className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center font-mono font-bold text-xs" style={{ background: `${step.color}15`, border: `1px solid ${step.color}25`, color: step.color }}>
                 {step.n}
@@ -328,10 +323,10 @@ export default function Home() {
       <section className="py-20 px-6" style={{ background: "rgba(255,255,255,0.02)", borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
         <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           {[
-            { target: 4, suffix: "", label: "MLIM Layers", sub: "Sequential processing pipeline" },
-            { target: 8, suffix: "", label: "Intent Labels", sub: "Searle speech act taxonomy" },
-            { target: 7, suffix: "", label: "Emotion Axes", sub: "Face-api.js detection" },
-            { target: 3, suffix: "s", label: "Avg Latency", sub: "Parallel ASL + PEL execution" },
+            { target: 4, suffix: "", label: "MLIM Layers", sub: "ASL · PEL · GSTL · IFL" },
+            { target: 8, suffix: "", label: "Intent Labels", sub: "Searle speech-act taxonomy" },
+            { target: 7, suffix: "", label: "Emotion Axes", sub: "face-api.js detection" },
+            { target: 2, suffix: "", label: "Groq Models", sub: "8B fast · 70B reasoning" },
           ].map((m) => (
             <div key={m.label}>
               <div style={{ fontFamily: "'Syne', sans-serif", color: "#6c63ff" }} className="font-extrabold text-5xl leading-none mb-2">
@@ -378,7 +373,7 @@ export default function Home() {
               Ready to see your intent profile?
             </h2>
             <p className="mb-10 text-sm leading-relaxed max-w-lg mx-auto" style={{ color: "#6b7280" }}>
-              Create an account and start your first session. Watch the MLIM pipeline analyze your answers in real time across all four layers.
+              Create an account and start your first session. Watch the MLIM pipeline analyze your answers across all four layers, live.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/register">
