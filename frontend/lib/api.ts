@@ -20,7 +20,12 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (res.status === 401) {
     token = await refreshAccessToken();
-    if (token) res = await makeRequest(token);
+    if (token) {
+      res = await makeRequest(token);
+    } else {
+      if (typeof window !== "undefined") window.location.href = "/login";
+      throw new Error("Session expired. Please log in again.");
+    }
   }
 
   if (!res.ok) {
