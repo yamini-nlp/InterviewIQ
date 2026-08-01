@@ -108,8 +108,9 @@ export default function Home() {
         }} />
         <div className="absolute top-[10%] right-[-10%] w-[720px] h-[720px] rounded-full pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(108,99,255,0.1) 0%, transparent 70%)" }} />
 
-
-           <h1 style={{ fontFamily: "'Syne', sans-serif" }} className="font-extrabold leading-[1.05] tracking-tight mb-6">
+        <div className="relative z-10 max-w-7xl mx-auto w-full grid lg:grid-cols-2 gap-16 items-center">
+          <div>
+            <h1 style={{ fontFamily: "'Syne', sans-serif" }} className="font-extrabold leading-[1.05] tracking-tight mb-6">
           <span className="block text-white" style={{ fontSize: "clamp(2.6rem, 5.5vw, 4.2rem)" }}>Role Ready?</span>
           <span className="block text-white mt-3" style={{ fontSize: "clamp(1.4rem, 2.6vw, 2rem)" }}>The AI interview coach</span>
           <span className="block mt-1" style={{
