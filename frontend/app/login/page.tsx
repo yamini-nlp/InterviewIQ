@@ -1,11 +1,12 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
 
 export default function Login() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,7 +19,9 @@ export default function Login() {
     setLoading(true);
     try {
       await login(email, password);
-      router.push("/dashboard");
+      const redirect = searchParams.get("redirect");
+      const safeRedirect = redirect && redirect.startsWith("/") && !redirect.startsWith("//") ? redirect : "/dashboard";
+      router.push(safeRedirect);
     } catch (err: any) {
       setError(err.message || "Login failed");
     } finally {
