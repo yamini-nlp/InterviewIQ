@@ -9,7 +9,7 @@ from app.core import metrics
 
 logger = logging.getLogger(__name__)
 
-FAST_MODEL = "llama-3.1-8b-instant"
+FAST_MODEL = "openai/gpt-oss-20b"
 
 NEGATIONS = {
     "not", "no", "never", "none", "nobody", "nothing", "neither", "nowhere",

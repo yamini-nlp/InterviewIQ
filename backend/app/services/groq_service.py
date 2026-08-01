@@ -21,7 +21,7 @@ def get_groq_client() -> AsyncGroq:
 
 async def call_groq(
     prompt: str,
-    model: str = "llama-3.3-70b-versatile",
+    model: str = "openai/gpt-oss-120b",
     max_tokens: int = 2048,
     temperature: float = 0.7,
     retries: int = 3,
@@ -69,7 +69,7 @@ async def call_groq_json(
     prompt: str,
     max_tokens: int = 2048,
     retries: int = 3,
-    model: str = "llama-3.3-70b-versatile",
+    model: str = "openai/gpt-oss-120b",
 ) -> dict:
     last_error = None
     for attempt in range(retries):
@@ -98,7 +98,7 @@ async def call_groq_json(
 
 async def stream_groq(
     prompt: str,
-    model: str = "llama-3.3-70b-versatile",
+    model: str = "openai/gpt-oss-120b",
     max_tokens: int = 512,
     temperature: float = 0.5,
 ) -> AsyncGenerator[str, None]:

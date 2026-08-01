@@ -18,7 +18,7 @@ from app.models.mlim import (
 
 logger = logging.getLogger(__name__)
 
-FAST_MODEL = "llama-3.1-8b-instant"
+FAST_MODEL = "openai/gpt-oss-20b"
 
 INTENT_LABELS: Tuple[str, ...] = tuple(label.value for label in IntentLabel)
 

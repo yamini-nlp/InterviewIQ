@@ -8,7 +8,7 @@ from app.models.mlim import FairnessProbeResult
 
 logger = logging.getLogger(__name__)
 
-FAST_MODEL = "llama-3.1-8b-instant"
+FAST_MODEL = "openai/gpt-oss-20b"
 
 STYLE_KEYS = ("formal", "informal", "non_native_simplified", "terse")
 

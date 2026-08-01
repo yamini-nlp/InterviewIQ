@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { loadSession, saveSession } from "@/lib/storage";
 import { simulateRespond, generateReport } from "@/lib/api";
 import { Question } from "@/types";
-import { Navbar } from "@/components/layout/Navbar";
 import { VideoPanel } from "@/components/interview/VideoPanel";
 import { TimerBar } from "@/components/interview/TimerBar";
 import { InterviewerAvatar } from "@/components/interview/InterviewerAvatar";
@@ -196,7 +195,6 @@ export default function Simulation() {
 
   return (
     <div className="min-h-screen bg-night-950 flex flex-col">
-      <Navbar />
 
       {cheating.showWarning && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-error-500/90 backdrop-blur-sm text-white px-4 py-2.5 rounded-xl shadow-lg border border-error-400/50 animate-fade-in">

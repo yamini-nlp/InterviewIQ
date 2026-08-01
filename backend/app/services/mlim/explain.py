@@ -87,7 +87,7 @@ def _fallback_counterfactual(analysis: MLIMAnalysis) -> str:
 async def counterfactual_explanation(analysis: MLIMAnalysis) -> str:
     try:
         prompt = _build_counterfactual_prompt(analysis)
-        data = await call_groq_json(prompt, model="llama-3.1-8b-instant")
+        data = await call_groq_json(prompt, model="openai/gpt-oss-20b")
         sentence = data.get("counterfactual")
         if not sentence or not isinstance(sentence, str):
             return _fallback_counterfactual(analysis)

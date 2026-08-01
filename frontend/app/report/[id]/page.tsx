@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { getReport } from "@/lib/api";
 import { Report } from "@/types";
-import { Navbar } from "@/components/layout/Navbar";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge, Progress } from "@/components/ui/Badge";
 import { scoreColor } from "@/lib/utils";
@@ -34,7 +33,7 @@ export default function ReportPage() {
     const w = pdf.internal.pageSize.getWidth();
     const h = (canvas.height / canvas.width) * w;
     pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, w, h);
-    pdf.save(`RoleReady?_Report_${id}.pdf`);
+    pdf.save(`RoleReady_Report_${id}.pdf`);
   };
 
   if (loading) return (
@@ -57,7 +56,6 @@ export default function ReportPage() {
 
   return (
     <div className="min-h-screen bg-night-950">
-      <Navbar />
       <main className="pt-24 pb-16 px-6 max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>

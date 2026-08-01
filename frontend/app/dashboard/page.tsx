@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import { getSessions } from "@/lib/api";
 import { Session } from "@/types";
-import { Navbar } from "@/components/layout/Navbar";
 import { SessionCard } from "@/components/dashboard/SessionCard";
 import { Button } from "@/components/ui/Button";
 import { Loader2, Plus } from "lucide-react";
@@ -20,7 +19,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-night-950">
-      <Navbar />
       <main className="pt-24 pb-16 px-6 max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>

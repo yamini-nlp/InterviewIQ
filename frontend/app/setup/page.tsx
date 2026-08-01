@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { generateQuestions } from "@/lib/api";
@@ -38,7 +37,6 @@ export default function Setup() {
 
   return (
     <div className="min-h-screen bg-night-950">
-      <Navbar />
       <main className="pt-24 pb-16 px-6 max-w-3xl mx-auto">
         <div className="mb-10">
           <h1 className="font-display text-4xl font-bold mb-2">Setup Interview</h1>

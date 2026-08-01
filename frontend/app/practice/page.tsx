@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { loadSession, saveSession } from "@/lib/storage";
 import { evaluateAnswer, generateReport } from "@/lib/api";
 import { Question, Feedback } from "@/types";
-import { Navbar } from "@/components/layout/Navbar";
 import { VideoPanel, FaceDetectionData } from "@/components/interview/VideoPanel";
 import { FeedbackCard } from "@/components/interview/FeedbackCard";
 import { TimerBar } from "@/components/interview/TimerBar";
@@ -154,7 +153,6 @@ export default function Practice() {
 
   return (
     <div className="min-h-screen bg-night-950 flex flex-col overflow-hidden">
-      <Navbar />
 
       {cheating.showWarning && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-error-500/90 backdrop-blur-sm text-white px-4 py-2.5 rounded-xl shadow-lg border border-error-400/50 animate-fade-in">
