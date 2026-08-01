@@ -19,6 +19,12 @@ def get_groq_client() -> AsyncGroq:
     return _groq_client
 
 
+def _reasoning_kwargs(model: str) -> dict:
+    if model.startswith("openai/gpt-oss"):
+        return {"reasoning_effort": "low", "include_reasoning": False}
+    return {}
+
+
 async def call_groq(
     prompt: str,
     model: str = "openai/gpt-oss-120b",
@@ -36,6 +42,7 @@ async def call_groq(
                     messages=[{"role": "user", "content": prompt}],
                     max_tokens=max_tokens,
                     temperature=temperature,
+                    **_reasoning_kwargs(model),
                 ),
                 timeout=30.0,
             )
@@ -111,6 +118,7 @@ async def stream_groq(
                 max_tokens=max_tokens,
                 temperature=temperature,
                 stream=True,
+                **_reasoning_kwargs(model),
             ),
             timeout=10.0,
         )
