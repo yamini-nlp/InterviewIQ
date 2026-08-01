@@ -51,7 +51,6 @@ export default function Practice() {
     const intro = `Welcome. Let's begin your ${s.job_role} practice session.\n\n${q}`;
     if (ttsEnabled) { setAvatarText(intro); setAvatarSpeaking(true); }
     else setTimerActive(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -152,7 +151,7 @@ export default function Practice() {
   const showResult = loading || !!feedback || !!feedbackError;
 
   return (
-    <div className="min-h-screen bg-night-950 flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-neutral-50 flex flex-col overflow-hidden">
 
       {cheating.showWarning && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-error-500/90 backdrop-blur-sm text-white px-4 py-2.5 rounded-xl shadow-lg border border-error-400/50 animate-fade-in">
@@ -181,7 +180,7 @@ export default function Practice() {
                 onFaceData={setFaceData}
                 suspended={suspended}
               />
-              <div className="absolute top-2 right-2 w-32 h-24 rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-night-800 z-20">
+              <div className="absolute top-2 right-2 w-32 h-24 rounded-xl overflow-hidden border border-neutral-200 shadow-2xl bg-neutral-100 z-20">
                 <InterviewerAvatar text={avatarText} speaking={avatarSpeaking && !suspended} onSpeakEnd={handleAvatarEnd} />
                 <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2">
                   <span className="text-[7px] text-neutral-500 bg-black/50 px-1 py-0.5 rounded font-mono">AI INTERVIEWER</span>
@@ -189,17 +188,17 @@ export default function Practice() {
               </div>
               <button
                 onClick={() => setTtsEnabled((v) => !v)}
-                className={`absolute top-2 left-2 z-20 flex items-center gap-1 px-2 py-1 rounded-lg text-[8px] font-mono border backdrop-blur-sm transition-all active:scale-95 ${ttsEnabled ? "bg-primary-500/20 border-primary-500/30 text-primary-300" : "bg-black/50 border-white/10 text-neutral-500"}`}
+                className={`absolute top-2 left-2 z-20 flex items-center gap-1 px-2 py-1 rounded-lg text-[8px] font-mono border backdrop-blur-sm transition-all active:scale-95 ${ttsEnabled ? "bg-primary-500/20 border-primary-500/30 text-primary-300" : "bg-black/50 border-neutral-200 text-neutral-500"}`}
               >
                 {ttsEnabled ? <><Volume2 size={9} /> TTS ON</> : <><VolumeX size={9} /> TTS OFF</>}
               </button>
             </div>
 
             <div className="glass rounded-2xl flex-shrink-0 flex flex-col overflow-hidden transition-shadow duration-300 hover:shadow-lg" style={{ maxHeight: "46vh" }}>
-              <div className="px-4 pt-3 pb-2 border-b border-white/5 flex-shrink-0">
+              <div className="px-4 pt-3 pb-2 border-b border-neutral-200 flex-shrink-0">
                 <div className="flex items-start gap-2 mb-1.5">
                   <span className="text-[9px] text-neutral-600 font-mono mt-0.5 flex-shrink-0">Q{currentIndex + 1}/{questions.length}</span>
-                  <p className="text-sm text-neutral-200 leading-snug line-clamp-2">{current?.text}</p>
+                  <p className="text-sm text-neutral-800 leading-snug line-clamp-2">{current?.text}</p>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Badge text={current.category} type="category" size="sm" />
@@ -212,10 +211,10 @@ export default function Practice() {
                   <div className="px-4 py-2.5 space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex gap-1.5">
-                        <button onClick={() => setInputMode("text")} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-mono border transition-all active:scale-95 ${inputMode === "text" ? "bg-primary-500/20 border-primary-500/30 text-primary-300" : "bg-white/5 border-white/10 text-neutral-500"}`}>
+                        <button onClick={() => setInputMode("text")} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-mono border transition-all active:scale-95 ${inputMode === "text" ? "bg-primary-500/20 border-primary-500/30 text-primary-300" : "bg-neutral-100 border-neutral-200 text-neutral-500"}`}>
                           <Keyboard size={9} /> TEXT
                         </button>
-                        <button onClick={() => setInputMode("voice")} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-mono border transition-all active:scale-95 ${inputMode === "voice" ? "bg-primary-500/20 border-primary-500/30 text-primary-300" : "bg-white/5 border-white/10 text-neutral-500"}`}>
+                        <button onClick={() => setInputMode("voice")} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-mono border transition-all active:scale-95 ${inputMode === "voice" ? "bg-primary-500/20 border-primary-500/30 text-primary-300" : "bg-neutral-100 border-neutral-200 text-neutral-500"}`}>
                           <Mic size={9} /> VOICE
                         </button>
                       </div>
@@ -255,8 +254,8 @@ export default function Practice() {
                           )}
                         </div>
                         {answer && (
-                          <div className="bg-white/5 rounded-xl px-3 py-1.5 border border-white/10">
-                            <p className="text-xs text-neutral-300 line-clamp-2">{answer}</p>
+                          <div className="bg-neutral-100 rounded-xl px-3 py-1.5 border border-neutral-200">
+                            <p className="text-xs text-neutral-600 line-clamp-2">{answer}</p>
                           </div>
                         )}
                       </div>
@@ -281,7 +280,7 @@ export default function Practice() {
             </div>
           </div>
 
-          <div className="w-60 flex-shrink-0 border-l border-white/5 p-2.5 pt-3 overflow-hidden flex flex-col bg-night-900">
+          <div className="w-60 flex-shrink-0 border-l border-neutral-200 p-2.5 pt-3 overflow-hidden flex flex-col bg-neutral-100">
             <LiveAnalyticsPanel
               mlimAnalysis={mlim.latestAnalysis}
               mlimAnalyzing={mlim.isAnalyzing}

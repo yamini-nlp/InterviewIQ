@@ -194,7 +194,7 @@ export default function Simulation() {
   const cheatingData = cheating.getSummary();
 
   return (
-    <div className="min-h-screen bg-night-950 flex flex-col">
+    <div className="min-h-screen bg-neutral-50 flex flex-col">
 
       {cheating.showWarning && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-error-500/90 backdrop-blur-sm text-white px-4 py-2.5 rounded-xl shadow-lg border border-error-400/50 animate-fade-in">
@@ -207,7 +207,7 @@ export default function Simulation() {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="glass rounded-2xl p-8 flex flex-col items-center gap-4 w-72">
             <Loader2 size={32} className="animate-spin text-primary-400" />
-            <p className="text-white font-display text-lg">Generating your report...</p>
+            <p className="text-neutral-900 font-display text-lg">Generating your report...</p>
             <div className="w-full space-y-2">
               <Skeleton height={10} />
               <Skeleton height={10} width="80%" />
@@ -228,17 +228,17 @@ export default function Simulation() {
                 suspended={cameraSuspended}
               />
 
-              <div className="absolute top-3 right-3 w-36 h-28 rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-night-800 z-20">
+              <div className="absolute top-3 right-3 w-36 h-28 rounded-xl overflow-hidden border border-neutral-200 shadow-2xl bg-neutral-100 z-20">
                 <InterviewerAvatar text={avatarText} speaking={avatarSpeaking} onSpeakEnd={handleAvatarSpeakEnd} />
                 <div className="absolute bottom-1 left-1/2 -translate-x-1/2">
-                  <span className="text-[8px] text-neutral-400 bg-black/50 px-1.5 py-0.5 rounded font-mono border border-white/10">AI INTERVIEWER</span>
+                  <span className="text-[8px] text-neutral-400 bg-black/50 px-1.5 py-0.5 rounded font-mono border border-neutral-200">AI INTERVIEWER</span>
                 </div>
               </div>
 
               <div className="absolute top-3 left-3 z-10">
                 <button
                   onClick={() => setSpeakEnabled((v) => !v)}
-                  className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[9px] font-mono border backdrop-blur-sm transition-all active:scale-95 ${speakEnabled ? "bg-primary-500/20 border-primary-500/30 text-primary-300" : "bg-black/50 border-white/10 text-neutral-500"}`}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[9px] font-mono border backdrop-blur-sm transition-all active:scale-95 ${speakEnabled ? "bg-primary-500/20 border-primary-500/30 text-primary-300" : "bg-black/50 border-neutral-200 text-neutral-500"}`}
                 >
                   <Volume2 size={10} />
                   {speakEnabled ? "VOICE ON" : "VOICE OFF"}
@@ -247,9 +247,9 @@ export default function Simulation() {
             </div>
 
             <div className="glass rounded-2xl overflow-hidden flex-shrink-0 transition-shadow duration-300 hover:shadow-lg" style={{ height: "220px" }}>
-              <div className="flex items-start gap-3 px-4 pt-3 pb-2 border-b border-white/5">
+              <div className="flex items-start gap-3 px-4 pt-3 pb-2 border-b border-neutral-200">
                 <span className="text-[10px] text-neutral-600 font-mono mt-0.5 flex-shrink-0">Q{currentIndex + 1}</span>
-                <p className="text-sm text-neutral-200 leading-snug line-clamp-2">{current?.text}</p>
+                <p className="text-sm text-neutral-800 leading-snug line-clamp-2">{current?.text}</p>
               </div>
 
               <div className="px-4 py-2 h-10 overflow-hidden">
@@ -263,13 +263,13 @@ export default function Simulation() {
                   <div className="flex gap-1.5">
                     <button
                       onClick={() => setInputMode("text")}
-                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-mono border transition-all active:scale-95 ${inputMode === "text" ? "bg-primary-500/20 border-primary-500/30 text-primary-300" : "bg-white/5 border-white/10 text-neutral-500 hover:text-neutral-300"}`}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-mono border transition-all active:scale-95 ${inputMode === "text" ? "bg-primary-500/20 border-primary-500/30 text-primary-300" : "bg-neutral-100 border-neutral-200 text-neutral-500 hover:text-neutral-700"}`}
                     >
                       <Keyboard size={10} /> TEXT
                     </button>
                     <button
                       onClick={() => setInputMode("voice")}
-                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-mono border transition-all active:scale-95 ${inputMode === "voice" ? "bg-primary-500/20 border-primary-500/30 text-primary-300" : "bg-white/5 border-white/10 text-neutral-500 hover:text-neutral-300"}`}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-mono border transition-all active:scale-95 ${inputMode === "voice" ? "bg-primary-500/20 border-primary-500/30 text-primary-300" : "bg-neutral-100 border-neutral-200 text-neutral-500 hover:text-neutral-700"}`}
                     >
                       <Mic size={10} /> VOICE
                     </button>
@@ -366,8 +366,8 @@ export default function Simulation() {
                       </Button>
                     )}
                     {answer && !answered && (
-                      <div className="flex-1 bg-white/5 rounded-xl px-3 py-2 border border-white/10">
-                        <p className="text-xs text-neutral-300 line-clamp-2">{answer}</p>
+                      <div className="flex-1 bg-neutral-100 rounded-xl px-3 py-2 border border-neutral-200">
+                        <p className="text-xs text-neutral-600 line-clamp-2">{answer}</p>
                       </div>
                     )}
                   </div>
@@ -376,7 +376,7 @@ export default function Simulation() {
             </div>
           </div>
 
-          <div className="w-64 flex-shrink-0 border-l border-white/5 p-3 pt-4 overflow-hidden flex flex-col bg-night-900">
+          <div className="w-64 flex-shrink-0 border-l border-neutral-200 p-3 pt-4 overflow-hidden flex flex-col bg-neutral-100">
             <LiveAnalyticsPanel
               mlimAnalysis={mlim.latestAnalysis}
               mlimAnalyzing={mlim.isAnalyzing}
