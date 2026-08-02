@@ -74,21 +74,44 @@ async def call_groq(
 
 async def call_groq_json(
     prompt: str,
-    max_tokens: int = 2048,
+    max_tokens: int = 4096,
     retries: int = 3,
     model: str = "openai/gpt-oss-120b",
 ) -> dict:
+    client = get_groq_client()
     last_error = None
+    use_json_mode = True
     for attempt in range(retries):
         try:
-            raw = await call_groq(
-                prompt, model=model, max_tokens=max_tokens, temperature=0.3
+            kwargs = {"response_format": {"type": "json_object"}} if use_json_mode else {}
+            response = await asyncio.wait_for(
+                client.chat.completions.create(
+                    model=model,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=max_tokens,
+                    temperature=0.3,
+                    **kwargs,
+                    **_reasoning_kwargs(model),
+                ),
+                timeout=30.0,
             )
-            cleaned = re.sub(r"```json\s*|\s*```", "", raw).strip()
+            raw = response.choices[0].message.content
+            finish_reason = response.choices[0].finish_reason
+            if finish_reason == "length":
+                raise Exception(
+                    f"Groq response truncated by max_tokens={max_tokens} before completion"
+                )
+            cleaned = re.sub(r"```json\s*|\s*```", "", raw or "").strip()
             match = re.search(r"\{.*\}", cleaned, re.DOTALL)
             if match:
                 cleaned = match.group(0)
             return json.loads(cleaned)
+        except asyncio.TimeoutError:
+            last_error = Exception(
+                f"Groq JSON call timed out after 30s on attempt {attempt + 1}"
+            )
+            logger.warning(f"Groq JSON timeout on attempt {attempt + 1} (model={model})")
+            await asyncio.sleep(0.5)
         except json.JSONDecodeError as e:
             last_error = Exception(
                 f"JSON parse failed attempt {attempt + 1}: {e}"
@@ -97,7 +120,14 @@ async def call_groq_json(
             await asyncio.sleep(0.5)
         except Exception as e:
             last_error = e
-            await asyncio.sleep(0.5)
+            err_str = str(e).lower()
+            if use_json_mode and ("response_format" in err_str or "json_object" in err_str):
+                logger.warning("Groq rejected response_format=json_object for this model, retrying without it")
+                use_json_mode = False
+                continue
+            wait = 2 ** attempt if "rate_limit" in err_str or "429" in err_str else 0.5
+            logger.warning(f"Groq JSON call attempt {attempt + 1} failed: {e}")
+            await asyncio.sleep(wait)
     metrics.record_groq_error(operation="call_groq_json")
     logger.error(f"Groq JSON call failed after {retries} attempts (model={model}): {last_error}")
     raise last_error
