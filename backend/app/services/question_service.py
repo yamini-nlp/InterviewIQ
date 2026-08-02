@@ -40,7 +40,7 @@ def _coerce_difficulty(raw: str) -> DifficultyLevel:
 
 async def generate_questions(job_role: str, job_description: str, resume_text: Optional[str] = None, num_technical: int = 4, num_behavioral: int = 3, num_scenario: int = 3) -> List[Question]:
     prompt = build_question_gen_prompt(job_role, job_description, resume_text, num_technical, num_behavioral, num_scenario)
-    data = await call_groq_json(prompt, max_tokens=5000)
+    data = await call_groq_json(prompt, max_tokens=8000)
     questions = []
     for i, q in enumerate(data.get("questions", [])):
         text = q.get("text")
