@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState, useEffect, useCallback, MutableRefObject } from "react";
 import { Button } from "@/components/ui/Button";
-import { Mic, MicOff, Loader2 } from "lucide-react";
+import { Mic, MicOff, Loader2, RotateCcw } from "lucide-react";
 import { transcribeAudio } from "@/lib/api";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useToast } from "@/hooks/useToast";
@@ -16,13 +16,25 @@ interface Props {
 const BAR_COUNT = 20;
 
 export function AudioRecorder({ onTranscript, disabled, onRecordingChange, streamRef }: Props) {
-  const { isRecording, audioBlob, error, startRecording, stopRecording, analyserRef, streamRef: internalStreamRef } = useAudioRecorder();
+  const {
+    isRecording,
+    audioBlob,
+    error,
+    suspended,
+    startRecording,
+    stopRecording,
+    retry,
+    analyserRef,
+    streamRef: internalStreamRef,
+  } = useAudioRecorder();
   const [transcribing, setTranscribing] = useState(false);
+  const [uploadFailed, setUploadFailed] = useState(false);
   const { toast } = useToast();
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number | null>(null);
   const processedBlobRef = useRef<Blob | null>(null);
+  const lastBlobRef = useRef<Blob | null>(null);
 
   useEffect(() => {
     onRecordingChange?.(isRecording);
@@ -34,7 +46,7 @@ export function AudioRecorder({ onTranscript, disabled, onRecordingChange, strea
 
   useEffect(() => {
     if (error) {
-      toast({ title: "Microphone unavailable", description: error, variant: "error" });
+      toast({ title: "Microphone issue", description: error, variant: "error" });
     }
   }, [error, toast]);
 
@@ -42,25 +54,36 @@ export function AudioRecorder({ onTranscript, disabled, onRecordingChange, strea
     if (disabled && isRecording) stopRecording();
   }, [disabled, isRecording, stopRecording]);
 
-  useEffect(() => {
-    if (!audioBlob || audioBlob === processedBlobRef.current) return;
-    processedBlobRef.current = audioBlob;
+  const runTranscription = useCallback((blob: Blob) => {
     let cancelled = false;
+    lastBlobRef.current = blob;
+    setUploadFailed(false);
     setTranscribing(true);
-    transcribeAudio(audioBlob)
+    transcribeAudio(blob)
       .then(({ transcript }) => {
         if (!cancelled) onTranscript(transcript);
       })
       .catch(() => {
         if (!cancelled) {
-          toast({ title: "Transcription failed", description: "Please try recording your answer again.", variant: "error" });
+          setUploadFailed(true);
+          toast({
+            title: "Transcription failed",
+            description: "We couldn't upload your recording. Check your connection and retry.",
+            variant: "error",
+          });
         }
       })
       .finally(() => {
         if (!cancelled) setTranscribing(false);
       });
     return () => { cancelled = true; };
-  }, [audioBlob, onTranscript, toast]);
+  }, [onTranscript, toast]);
+
+  useEffect(() => {
+    if (!audioBlob || audioBlob === processedBlobRef.current) return;
+    processedBlobRef.current = audioBlob;
+    return runTranscription(audioBlob);
+  }, [audioBlob, runTranscription]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -105,11 +128,26 @@ export function AudioRecorder({ onTranscript, disabled, onRecordingChange, strea
     else startRecording();
   }, [isRecording, startRecording, stopRecording]);
 
+  const handleRetryUpload = useCallback(() => {
+    if (lastBlobRef.current) runTranscription(lastBlobRef.current);
+  }, [runTranscription]);
+
   if (transcribing) {
     return (
-      <div className="flex items-center gap-2 text-sm text-neutral-400">
+      <div className="flex items-center gap-2 text-sm text-neutral-400" role="status" aria-live="polite">
         <Loader2 size={14} className="animate-spin" />
         Transcribing...
+      </div>
+    );
+  }
+
+  if (uploadFailed) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-error-400">
+        <span>Upload failed.</span>
+        <Button variant="outline" size="sm" onClick={handleRetryUpload}>
+          <RotateCcw size={14} /> Retry
+        </Button>
       </div>
     );
   }
@@ -118,7 +156,10 @@ export function AudioRecorder({ onTranscript, disabled, onRecordingChange, strea
     return (
       <div className="flex items-center gap-2 text-sm text-error-400">
         <MicOff size={14} />
-        Microphone access denied. Check your browser permissions.
+        <span>{error}</span>
+        <Button variant="outline" size="sm" onClick={retry}>
+          <RotateCcw size={14} /> Try again
+        </Button>
       </div>
     );
   }
@@ -131,10 +172,11 @@ export function AudioRecorder({ onTranscript, disabled, onRecordingChange, strea
         onClick={handleClick}
         disabled={disabled}
         className="active:scale-95"
+        aria-pressed={isRecording}
       >
         {isRecording ? <><MicOff size={14} /> Stop Recording</> : <><Mic size={14} /> Record Answer</>}
       </Button>
-      {isRecording && (
+      {isRecording && !suspended && (
         <canvas
           ref={canvasRef}
           width={96}
@@ -143,6 +185,9 @@ export function AudioRecorder({ onTranscript, disabled, onRecordingChange, strea
           role="img"
           aria-label="Microphone audio level"
         />
+      )}
+      {isRecording && suspended && (
+        <span className="text-xs text-neutral-500">Paused (tab inactive)</span>
       )}
     </div>
   );
