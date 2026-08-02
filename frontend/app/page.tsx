@@ -100,62 +100,68 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#07080b] overflow-x-hidden" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-      <section className="relative min-h-[92vh] flex items-center px-6 pt-24 pb-20 overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none" style={{
-          backgroundImage: "linear-gradient(rgba(108,99,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(108,99,255,0.035) 1px, transparent 1px)",
-          backgroundSize: "64px 64px",
-          maskImage: "radial-gradient(ellipse 70% 60% at 20% 30%, black 40%, transparent 100%)",
-        }} />
-        <div className="absolute top-[10%] right-[-10%] w-[720px] h-[720px] rounded-full pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(108,99,255,0.1) 0%, transparent 70%)" }} />
+      <section className="relative px-6 pt-28 pb-24 md:pt-32 md:pb-28 overflow-hidden">
+        <div className="absolute -top-32 right-[-14%] w-[620px] h-[620px] rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(108,99,255,0.13) 0%, transparent 72%)" }} />
 
-        <div className="relative z-10 max-w-7xl mx-auto w-full grid lg:grid-cols-2 gap-16 items-center">
-          <div>
-            <h1 style={{ fontFamily: "'Syne', sans-serif" }} className="font-extrabold leading-[1.05] tracking-tight mb-6">
-          <span className="block text-white" style={{ fontSize: "clamp(2.6rem, 5.5vw, 4.2rem)" }}>Role Ready?</span>
-          <span className="block text-white mt-3" style={{ fontSize: "clamp(1.4rem, 2.6vw, 2rem)" }}>The AI interview coach</span>
-          <span className="block mt-1" style={{
-          fontSize: "clamp(1.4rem, 2.6vw, 2rem)",
-          background: "linear-gradient(135deg, #6c63ff 0%, #a78bfa 50%, #60a5fa 100%)",
-          WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-        }}>that reads intent.</span>
-        </h1>
-
-            <p className="text-lg leading-relaxed mb-10 max-w-xl" style={{ color: "#9ca3af" }}>
-              Not just what you say — but what you <em className="not-italic" style={{ color: "#e5e7eb" }}>mean</em>. A 4-layer analysis pipeline reads every answer for emotional signal, pragmatic intent, and goal drift, in real time.
-            </p>
-
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-10">
-              <Link href="/register">
-                <button className="group flex items-center gap-2.5 px-8 py-3.5 rounded-xl font-semibold text-white transition-all duration-200 hover:-translate-y-0.5" style={{ background: "linear-gradient(135deg, #6c63ff, #8b85ff)", boxShadow: "0 0 32px rgba(108,99,255,0.35), 0 4px 16px rgba(0,0,0,0.4)" }}>
-                  Start Free Session
-                  <ArrowRight size={16} className="transition-transform duration-200 group-hover:translate-x-0.5" />
-                </button>
-              </Link>
-              <Link href="/login">
-                <button className="flex items-center gap-2 px-8 py-3.5 rounded-xl font-medium transition-all duration-200 hover:border-white/20" style={{ border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", background: "rgba(255,255,255,0.03)" }}>
-                  Sign in
-                </button>
-              </Link>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3 mb-10">
-              {[
-                { v: "4", l: "MLIM Layers" }, { v: "8", l: "Intent Labels" },
-                { v: "7", l: "Emotion Axes" }, { v: "2", l: "Groq Models" },
-              ].map((s) => (
-                <div key={s.l} className="px-5 py-2.5 rounded-xl text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                  <span style={{ fontFamily: "'Syne', sans-serif", color: "#6c63ff" }} className="font-bold text-xl block leading-none mb-0.5">{s.v}</span>
-                  <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "#6b7280" }}>{s.l}</span>
-                </div>
+        <div className="relative z-10 max-w-7xl mx-auto w-full grid lg:grid-cols-[1fr_440px] gap-14 lg:gap-20 items-center">
+          <div className="flex gap-7">
+            <div className="hidden sm:flex flex-col gap-2.5 pt-3 shrink-0">
+              {mlimLayers.map((layer) => (
+                <span key={layer.id} className="w-[3px] h-14 rounded-full" style={{ background: layer.color, opacity: 0.5 }} />
               ))}
             </div>
 
-            <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "#374151" }}>
-              Built on LLaMA 3.3 70B · Whisper Large v3 · face-api.js · MongoDB Atlas
-            </p>
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full mb-7 px-3.5 py-1.5" style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#6c63ff" }} />
+                <span className="text-[10.5px] font-mono uppercase tracking-[0.16em]" style={{ color: "#9ca3af" }}>Multi-Layer Intent Modeling</span>
+              </div>
+
+              <h1 style={{ fontFamily: "'Syne', sans-serif" }} className="font-extrabold tracking-tight text-white">
+                <span className="block leading-[0.98]" style={{ fontSize: "clamp(2.75rem, 5vw, 4.35rem)" }}>Role Ready?</span>
+                <span className="block mt-4 leading-tight" style={{ fontSize: "clamp(1.3rem, 2.2vw, 1.8rem)", color: "#c7cad3" }}>The AI interview coach that</span>
+                <span className="block leading-tight" style={{
+                  fontSize: "clamp(1.3rem, 2.2vw, 1.8rem)",
+                  background: "linear-gradient(120deg, #8b85ff 0%, #6c63ff 55%, #60a5fa 100%)",
+                  WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+                }}>reads intent.</span>
+              </h1>
+
+              <p className="mt-7 max-w-lg text-[1.05rem] leading-relaxed" style={{ color: "#8b93a3" }}>
+                Not just what you say — what you <em className="not-italic" style={{ color: "#d8dae1" }}>mean</em>. Every answer runs through four layers of signal: emotional tone, pragmatic intent, and how your goals shift as the session goes on.
+              </p>
+
+              <div className="mt-9 flex flex-wrap items-center gap-5">
+                <Link href="/register">
+                  <button className="group inline-flex items-center gap-2.5 px-7 py-3.5 rounded-xl font-semibold text-white transition-transform duration-200 hover:-translate-y-0.5" style={{ background: "#6c63ff" }}>
+                    Start free session
+                    <ArrowRight size={16} className="transition-transform duration-200 group-hover:translate-x-1" />
+                  </button>
+                </Link>
+                <Link href="/login" className="text-sm font-medium pb-0.5 transition-colors hover:text-white" style={{ borderBottom: "1px solid rgba(255,255,255,0.18)", color: "#9ca3af" }}>
+                  Sign in
+                </Link>
+              </div>
+
+              <div className="mt-12 pt-7 flex flex-wrap gap-x-8 gap-y-4" style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+                {[
+                  { v: "4", l: "MLIM layers" }, { v: "8", l: "Intent labels" },
+                  { v: "7", l: "Emotion axes" }, { v: "2", l: "Groq models" },
+                ].map((s) => (
+                  <div key={s.l} className="flex items-baseline gap-2">
+                    <span style={{ fontFamily: "'Syne', sans-serif", color: "#e7e8ec" }} className="text-2xl font-bold">{s.v}</span>
+                    <span className="text-[10px] font-mono uppercase tracking-[0.14em]" style={{ color: "#666d7d" }}>{s.l}</span>
+                  </div>
+                ))}
+              </div>
+
+              <p className="mt-8 text-[10px] font-mono uppercase tracking-[0.16em]" style={{ color: "#454b59" }}>
+                Built on LLaMA 3.3 70B · Whisper Large v3 · face-api.js · MongoDB Atlas
+              </p>
+            </div>
           </div>
 
-          <div className="rounded-2xl p-6" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
+          <div className="relative rounded-2xl p-6" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 30px 80px -30px rgba(0,0,0,0.55)" }}>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#f87171] animate-pulse" />
