@@ -21,7 +21,7 @@ def get_groq_client() -> AsyncGroq:
 
 def _reasoning_kwargs(model: str) -> dict:
     if model.startswith("openai/gpt-oss"):
-        return {"reasoning_effort": "low", "include_reasoning": False}
+        return {"extra_body": {"reasoning_effort": "low", "include_reasoning": False}}
     return {}
 
 
