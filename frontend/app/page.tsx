@@ -113,7 +113,7 @@ export default function Home() {
 
             <div>
               <div className="flex items-center gap-3 mb-7">
-                <span style={{ fontFamily: "'Syne', sans-serif", color: "#e7e8ec" }} className="text-sm font-bold tracking-tight">RoleReady</span>
+                <span style={{ fontFamily: "'Syne', sans-serif", background: "linear-gradient(120deg, #8b85ff 0%, #6c63ff 55%, #60a5fa 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }} className="text-sm font-bold tracking-tight">InterviewIQ</span>
                 <span className="w-1 h-1 rounded-full" style={{ background: "#3a3f4b" }} />
                 <span className="text-[10.5px] font-mono uppercase tracking-[0.16em]" style={{ color: "#9ca3af" }}>Multi-Layer Intent Modeling</span>
               </div>

@@ -42,7 +42,7 @@ export default function SettingsPage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `roleready_data_export_${user?.id ?? "account"}.json`;
+      link.download = `interviewiq_data_export_${user?.id ?? "account"}.json`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -115,7 +115,7 @@ export default function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Appearance</CardTitle>
-            <CardDescription>Choose how RoleReady looks on this device</CardDescription>
+            <CardDescription>Choose how InterviewIQ looks on this device</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex gap-2" role="radiogroup" aria-label="Theme">

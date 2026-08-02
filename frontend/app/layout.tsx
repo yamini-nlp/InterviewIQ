@@ -5,7 +5,7 @@ import { ToastProvider, Toaster } from "@/components/ui/Toast";
 import { AppShell } from "@/components/layout/AppShell";
 
 export const metadata: Metadata = {
-  title: "RoleReady — AI Interview Coach",
+  title: "InterviewIQ — AI Interview Coach",
   description: "Practice, simulate, and ace your next interview with AI-powered MLIM analysis",
 };
 

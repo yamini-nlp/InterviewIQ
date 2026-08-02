@@ -34,7 +34,7 @@ function LoginForm() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-display font-bold text-white mb-2">Welcome back</h1>
-          <p className="text-gray-400">Sign in to your RoleReady account</p>
+          <p className="text-gray-400">Sign in to your InterviewIQ account</p>
         </div>
 
         <div className="glass rounded-2xl p-8">
