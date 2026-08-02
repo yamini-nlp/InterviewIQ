@@ -112,19 +112,19 @@ export default function Home() {
             </div>
 
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full mb-7 px-3.5 py-1.5" style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#6c63ff" }} />
+              <div className="flex items-center gap-3 mb-7">
+                <span style={{ fontFamily: "'Syne', sans-serif", color: "#e7e8ec" }} className="text-sm font-bold tracking-tight">RoleReady</span>
+                <span className="w-1 h-1 rounded-full" style={{ background: "#3a3f4b" }} />
                 <span className="text-[10.5px] font-mono uppercase tracking-[0.16em]" style={{ color: "#9ca3af" }}>Multi-Layer Intent Modeling</span>
               </div>
 
-              <h1 style={{ fontFamily: "'Syne', sans-serif" }} className="font-extrabold tracking-tight text-white">
-                <span className="block leading-[0.98]" style={{ fontSize: "clamp(2.75rem, 5vw, 4.35rem)" }}>Role Ready?</span>
-                <span className="block mt-4 leading-tight" style={{ fontSize: "clamp(1.3rem, 2.2vw, 1.8rem)", color: "#c7cad3" }}>The AI interview coach that</span>
-                <span className="block leading-tight" style={{
-                  fontSize: "clamp(1.3rem, 2.2vw, 1.8rem)",
+              <h1 style={{ fontFamily: "'Syne', sans-serif" }} className="font-extrabold tracking-tight leading-[1.08]">
+                <span className="block text-white" style={{ fontSize: "clamp(2.1rem, 3.6vw, 3.1rem)" }}>The AI interview coach</span>
+                <span className="block" style={{
+                  fontSize: "clamp(2.1rem, 3.6vw, 3.1rem)",
                   background: "linear-gradient(120deg, #8b85ff 0%, #6c63ff 55%, #60a5fa 100%)",
                   WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-                }}>reads intent.</span>
+                }}>that reads intent.</span>
               </h1>
 
               <p className="mt-7 max-w-lg text-[1.05rem] leading-relaxed" style={{ color: "#8b93a3" }}>
