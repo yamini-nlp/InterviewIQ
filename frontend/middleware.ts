@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const PROTECTED = ["/setup", "/simulation", "/practice", "/dashboard", "/report"];
+const PROTECTED = ["/setup", "/simulation", "/practice", "/dashboard", "/report", "/settings"];
 
 function setAuthCookies(response: NextResponse, access: string, refresh: string, secure: boolean) {
   response.cookies.set("rr_access_token", access, {
@@ -61,5 +61,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/setup/:path*", "/simulation/:path*", "/practice/:path*", "/dashboard/:path*", "/report/:path*"],
+  matcher: ["/setup/:path*", "/simulation/:path*", "/practice/:path*", "/dashboard/:path*", "/report/:path*", "/settings/:path*"],
 };

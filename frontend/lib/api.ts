@@ -115,3 +115,27 @@ export async function getReport(session_id: string) {
 export async function getSessions() {
   return apiFetch<{ sessions: any[] }>("/api/reports/sessions/all");
 }
+
+export async function exportUserData(): Promise<Blob> {
+  let token = getAccessToken();
+  const doFetch = (t: string | null) =>
+    fetch(`${BASE}/api/privacy/export`, {
+      headers: t ? { Authorization: `Bearer ${t}` } : {},
+    });
+
+  let res = await doFetch(token);
+  if (res.status === 401) {
+    token = await refreshAccessToken();
+    if (!token) throw new Error("Session expired. Please log in again.");
+    res = await doFetch(token);
+  }
+  if (!res.ok) throw new Error("Couldn't export your data. Please try again.");
+  return res.blob();
+}
+
+export async function deleteAccount() {
+  return apiFetch<{ deleted: boolean; counts: Record<string, number> }>("/api/privacy/account", {
+    method: "DELETE",
+    body: JSON.stringify({ confirm: true }),
+  });
+}
