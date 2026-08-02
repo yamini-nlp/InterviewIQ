@@ -229,7 +229,13 @@ export default function Simulation() {
               />
 
               <div className="absolute top-3 right-3 w-36 h-28 rounded-xl overflow-hidden border border-neutral-200 shadow-2xl bg-neutral-100 z-20">
-                <InterviewerAvatar text={avatarText} speaking={avatarSpeaking} onSpeakEnd={handleAvatarSpeakEnd} />
+                <InterviewerAvatar
+                  text={avatarText}
+                  speaking={avatarSpeaking}
+                  onSpeakEnd={handleAvatarSpeakEnd}
+                  thinking={loading && !avatarSpeaking}
+                  listening={isRecording && !avatarSpeaking}
+                />
                 <div className="absolute bottom-1 left-1/2 -translate-x-1/2">
                   <span className="text-[8px] text-neutral-400 bg-black/50 px-1.5 py-0.5 rounded font-mono border border-neutral-200">AI INTERVIEWER</span>
                 </div>

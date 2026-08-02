@@ -5,14 +5,17 @@ interface Props {
   text: string;
   speaking: boolean;
   onSpeakEnd?: () => void;
+  thinking?: boolean;
+  listening?: boolean;
 }
 
-export function InterviewerAvatar({ text, speaking, onSpeakEnd }: Props) {
+export function InterviewerAvatar({ text, speaking, onSpeakEnd, thinking = false, listening = false }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number | null>(null);
   const synthRef = useRef<SpeechSynthesis | null>(null);
-  const [mouthOpen, setMouthOpen] = useState(0);
-  const [blinkState, setBlinkState] = useState(1);
+  const mouthOpenRef = useRef(0);
+  const mouthTargetRef = useRef(0);
+  const blinkStateRef = useRef(1);
   const blinkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mouthTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const speakTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -25,7 +28,7 @@ export function InterviewerAvatar({ text, speaking, onSpeakEnd }: Props) {
     }
     if (synthRef.current) synthRef.current.cancel();
     if (mouthTimer.current) clearInterval(mouthTimer.current);
-    setMouthOpen(0);
+    mouthTargetRef.current = 0;
     setIsSpeaking(false);
   }, []);
 
@@ -38,8 +41,8 @@ export function InterviewerAvatar({ text, speaking, onSpeakEnd }: Props) {
     const scheduleBlink = () => {
       const delay = 2500 + Math.random() * 3000;
       blinkTimer.current = setTimeout(() => {
-        setBlinkState(0);
-        setTimeout(() => { setBlinkState(1); scheduleBlink(); }, 120);
+        blinkStateRef.current = 0;
+        setTimeout(() => { blinkStateRef.current = 1; scheduleBlink(); }, 120);
       }, delay);
     };
     scheduleBlink();
@@ -62,17 +65,19 @@ export function InterviewerAvatar({ text, speaking, onSpeakEnd }: Props) {
       utterance.onstart = () => {
         setIsSpeaking(true);
         if (mouthTimer.current) clearInterval(mouthTimer.current);
-        mouthTimer.current = setInterval(() => setMouthOpen(Math.random() * 0.85 + 0.15), 90);
+        mouthTimer.current = setInterval(() => {
+          mouthTargetRef.current = Math.random() * 0.85 + 0.15;
+        }, 110);
       };
       utterance.onend = () => {
         if (mouthTimer.current) clearInterval(mouthTimer.current);
-        setMouthOpen(0);
+        mouthTargetRef.current = 0;
         setIsSpeaking(false);
         onSpeakEnd?.();
       };
       utterance.onerror = () => {
         if (mouthTimer.current) clearInterval(mouthTimer.current);
-        setMouthOpen(0);
+        mouthTargetRef.current = 0;
         setIsSpeaking(false);
         onSpeakEnd?.();
       };
@@ -101,9 +106,16 @@ export function InterviewerAvatar({ text, speaking, onSpeakEnd }: Props) {
     const H = canvas.height;
     const draw = () => {
       ctx.clearRect(0, 0, W, H);
+
+      // Ease the mouth toward its target instead of snapping (removes the robotic jump-cut look).
+      mouthOpenRef.current += (mouthTargetRef.current - mouthOpenRef.current) * 0.35;
+
+      const breathing = 1 + Math.sin(Date.now() / 1400) * (isSpeaking ? 0.004 : 0.012);
+      const thinkingBob = thinking ? Math.sin(Date.now() / 260) * 2.5 : 0;
+
       const cx = W / 2;
-      const cy = H / 2 - 10;
-      const r = Math.min(W, H) * 0.32;
+      const cy = H / 2 - 10 + thinkingBob;
+      const r = Math.min(W, H) * 0.32 * breathing;
       const grad = ctx.createRadialGradient(cx - r * 0.2, cy - r * 0.2, r * 0.1, cx, cy, r);
       grad.addColorStop(0, "#2d2060");
       grad.addColorStop(0.6, "#1a1440");
@@ -123,6 +135,28 @@ export function InterviewerAvatar({ text, speaking, onSpeakEnd }: Props) {
           ctx.stroke();
         });
         ctx.restore();
+      } else if (listening) {
+        ctx.save();
+        ctx.globalAlpha = 0.3 + Math.sin(Date.now() / 500) * 0.15;
+        ctx.strokeStyle = "rgba(52,211,153,0.5)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * 1.18, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      } else if (thinking) {
+        ctx.save();
+        const dotCount = 3;
+        for (let i = 0; i < dotCount; i++) {
+          const phase = (Date.now() / 260 + i * 0.6) % (Math.PI * 2);
+          const dotY = cy + r * 1.3 + Math.sin(phase) * 3;
+          ctx.globalAlpha = 0.4 + Math.sin(phase) * 0.3;
+          ctx.fillStyle = "#a78bfa";
+          ctx.beginPath();
+          ctx.arc(cx + (i - 1) * r * 0.22, dotY, r * 0.045, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
       }
       const eyeY = cy - r * 0.18;
       const eyeSpacing = r * 0.34;
@@ -134,25 +168,25 @@ export function InterviewerAvatar({ text, speaking, onSpeakEnd }: Props) {
         eg.addColorStop(1, "#6c63ff");
         ctx.fillStyle = eg;
         ctx.beginPath();
-        ctx.ellipse(ex, eyeY, eyeR, eyeR * blinkState, 0, 0, Math.PI * 2);
+        ctx.ellipse(ex, eyeY, eyeR, eyeR * blinkStateRef.current, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = "#0d0a26";
         ctx.beginPath();
-        ctx.ellipse(ex, eyeY, eyeR * 0.48, eyeR * 0.48 * blinkState, 0, 0, Math.PI * 2);
+        ctx.ellipse(ex, eyeY, eyeR * 0.48, eyeR * 0.48 * blinkStateRef.current, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = "rgba(255,255,255,0.7)";
         ctx.beginPath();
-        ctx.arc(ex - eyeR * 0.25, eyeY - eyeR * 0.25, eyeR * 0.18 * blinkState, 0, Math.PI * 2);
+        ctx.arc(ex - eyeR * 0.25, eyeY - eyeR * 0.25, eyeR * 0.18 * blinkStateRef.current, 0, Math.PI * 2);
         ctx.fill();
       });
       const mouthY = cy + r * 0.3;
       const mouthW = r * 0.42;
-      const mouthH = r * 0.18 * (0.2 + mouthOpen * 0.8);
+      const mouthH = r * 0.18 * (0.2 + mouthOpenRef.current * 0.8);
       ctx.fillStyle = "#0d0a26";
       ctx.beginPath();
       ctx.ellipse(cx, mouthY, mouthW, mouthH + r * 0.04, 0, 0, Math.PI * 2);
       ctx.fill();
-      if (mouthOpen > 0.1) {
+      if (mouthOpenRef.current > 0.1) {
         ctx.fillStyle = "#1a0a2e";
         ctx.beginPath();
         ctx.ellipse(cx, mouthY, mouthW * 0.88, mouthH * 0.88, 0, 0, Math.PI * 2);
@@ -184,7 +218,7 @@ export function InterviewerAvatar({ text, speaking, onSpeakEnd }: Props) {
     };
     draw();
     return () => { if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); };
-  }, [mouthOpen, blinkState, isSpeaking]);
+  }, [isSpeaking, thinking, listening]);
 
   return (
     <div className="relative w-full h-full flex items-center justify-center bg-night-800 rounded-2xl overflow-hidden">
