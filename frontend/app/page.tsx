@@ -101,8 +101,6 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#07080b] overflow-x-hidden" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <section className="relative px-6 pt-28 pb-24 md:pt-32 md:pb-28 overflow-hidden">
-        <div className="absolute -top-32 right-[-14%] w-[620px] h-[620px] rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(108,99,255,0.13) 0%, transparent 72%)" }} />
-
         <div className="relative z-10 max-w-7xl mx-auto w-full grid lg:grid-cols-[1fr_440px] gap-14 lg:gap-20 items-center">
           <div className="flex gap-7">
             <div className="hidden sm:flex flex-col gap-2.5 pt-3 shrink-0">
@@ -112,20 +110,17 @@ export default function Home() {
             </div>
 
             <div>
-              <div className="flex items-center gap-3 mb-7">
-                <span style={{ fontFamily: "'Syne', sans-serif", background: "linear-gradient(120deg, #8b85ff 0%, #6c63ff 55%, #60a5fa 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }} className="text-sm font-bold tracking-tight">InterviewIQ</span>
-                <span className="w-1 h-1 rounded-full" style={{ background: "#3a3f4b" }} />
+              <div className="flex items-center gap-3 mb-6">
                 <span className="text-[10.5px] font-mono uppercase tracking-[0.16em]" style={{ color: "#9ca3af" }}>Multi-Layer Intent Modeling</span>
               </div>
 
-              <h1 style={{ fontFamily: "'Syne', sans-serif" }} className="font-extrabold tracking-tight leading-[1.08]">
-                <span className="block text-white" style={{ fontSize: "clamp(2.1rem, 3.6vw, 3.1rem)" }}>The AI interview coach</span>
-                <span className="block" style={{
-                  fontSize: "clamp(2.1rem, 3.6vw, 3.1rem)",
-                  background: "linear-gradient(120deg, #8b85ff 0%, #6c63ff 55%, #60a5fa 100%)",
-                  WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-                }}>that reads intent.</span>
+              <h1 style={{ fontFamily: "'Syne', sans-serif" }} className="font-extrabold tracking-tight leading-[0.95] text-white" >
+                <span className="block" style={{ fontSize: "clamp(3.4rem, 7.5vw, 6.4rem)" }}>InterviewIQ</span>
               </h1>
+
+              <p style={{ fontFamily: "'Syne', sans-serif", color: "#8b85ff", fontSize: "clamp(1.3rem, 2.2vw, 1.7rem)" }} className="mt-4 font-bold tracking-tight leading-snug">
+                The AI interview coach that reads intent.
+              </p>
 
               <p className="mt-7 max-w-lg text-[1.05rem] leading-relaxed" style={{ color: "#8b93a3" }}>
                 Not just what you say — what you <em className="not-italic" style={{ color: "#d8dae1" }}>mean</em>. Every answer runs through four layers of signal: emotional tone, pragmatic intent, and how your goals shift as the session goes on.
