@@ -115,7 +115,7 @@ export default function Home() {
               </div>
 
               <h1 style={{ fontFamily: "'Syne', sans-serif" }} className="font-extrabold tracking-tight leading-[0.95] text-white" >
-                <span className="block" style={{ fontSize: "clamp(3.4rem, 7.5vw, 6.4rem)" }}>InterviewIQ</span>
+                <span className="block" style={{ fontSize: "clamp(2.0rem, 5.5vw, 4.4rem)" }}>InterviewIQ</span>
               </h1>
 
               <p style={{ fontFamily: "'Syne', sans-serif", color: "#8b85ff", fontSize: "clamp(1.3rem, 2.2vw, 1.7rem)" }} className="mt-4 font-bold tracking-tight leading-snug">
