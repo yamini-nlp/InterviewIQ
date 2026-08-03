@@ -23,14 +23,15 @@ import {
 import { MLIMAnalysis } from "@/types/mlim";
 
 const CHART_EMPTY_MESSAGE = "No MLIM data yet for this session";
-const AXIS_TICK_STYLE = { fill: "#9ca3af", fontSize: 11 };
-const AXIS_LABEL_STYLE = { fill: "#6b7280", fontSize: 11 };
-const AXIS_STROKE = "rgba(255,255,255,0.15)";
-const GRID_STROKE = "rgba(255,255,255,0.06)";
+const AXIS_TICK_STYLE = { fill: "rgb(var(--color-neutral-500))", fontSize: 11 };
+const AXIS_LABEL_STYLE = { fill: "rgb(var(--color-neutral-600))", fontSize: 11 };
+const AXIS_STROKE = "rgba(128,128,128,0.3)";
+const GRID_STROKE = "rgba(128,128,128,0.15)";
 const TOOLTIP_STYLE = {
-  backgroundColor: "#12151c",
-  border: "1px solid rgba(255,255,255,0.1)",
+  backgroundColor: "rgb(var(--color-neutral-100))",
+  border: "1px solid rgb(var(--color-neutral-900) / 0.1)",
   borderRadius: 8,
+  color: "rgb(var(--color-neutral-900))",
 };
 
 interface ChartFrameProps {
@@ -42,17 +43,17 @@ interface ChartFrameProps {
 }
 
 function ChartSkeleton({ height }: { height: number }) {
-  return <div className="w-full rounded-xl bg-white/5 animate-pulse" style={{ height }} />;
+  return <div className="w-full rounded-xl bg-neutral-200 animate-pulse" style={{ height }} />;
 }
 
 function ChartFrame({ title, loading, isEmpty, height, children }: ChartFrameProps) {
   return (
     <div className="glass rounded-2xl p-6">
-      <h3 className="font-display text-sm font-semibold text-white mb-4">{title}</h3>
+      <h3 className="font-display text-sm font-semibold text-neutral-900 mb-4">{title}</h3>
       {loading ? (
         <ChartSkeleton height={height} />
       ) : isEmpty ? (
-        <div className="w-full flex items-center justify-center text-sm text-gray-500" style={{ height }}>
+        <div className="w-full flex items-center justify-center text-sm text-neutral-500" style={{ height }}>
           {CHART_EMPTY_MESSAGE}
         </div>
       ) : (
@@ -302,13 +303,13 @@ export function FailureModeTimeline({ analyses, loading = false }: MLIMChartProp
                 const mode = String(value);
                 return mode === "none" ? "" : mode.replace(/_/g, " ");
               }}
-              fill="#9ca3af"
+              fill="rgb(var(--color-neutral-500))"
               fontSize={9}
             />
             {data.map((point) => (
               <Cell
                 key={point.turn}
-                fill={point.active === 1 ? FAILURE_MODE_COLORS[point.mode] ?? "#ef4444" : "rgba(255,255,255,0.05)"}
+                fill={point.active === 1 ? FAILURE_MODE_COLORS[point.mode] ?? "#ef4444" : "rgba(128,128,128,0.15)"}
               />
             ))}
           </Bar>
