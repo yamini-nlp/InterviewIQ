@@ -20,6 +20,43 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 const BASE = process.env.NEXT_PUBLIC_API_URL;
 
+async function parseJsonSafely(res: Response): Promise<any> {
+  const text = await res.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {};
+  }
+}
+
+async function postAuth(path: string, payload: Record<string, unknown>) {
+  if (!BASE) {
+    throw new Error(
+      "The app isn't configured with an API URL (NEXT_PUBLIC_API_URL). Set it in your deployment environment variables."
+    );
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    throw new Error("Couldn't reach the server. Check your connection and try again.");
+  }
+
+  if (!res.ok) {
+    const body = await parseJsonSafely(res);
+    const fallback = res.status === 0 ? "Network error" : `Request failed (${res.status})`;
+    throw new Error(body.detail || fallback);
+  }
+
+  return parseJsonSafely(res);
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -36,16 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const res = await fetch(`${BASE}/api/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-    if (!res.ok) {
-      const e = await res.json();
-      throw new Error(e.detail || "Login failed");
-    }
-    const data = await res.json();
+    const data = await postAuth("/api/auth/login", { email, password });
     setTokens(data.access_token, data.refresh_token);
     setUser(data.user);
     setUserState(data.user);
@@ -53,16 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const register = useCallback(async (email: string, password: string, name: string) => {
-    const res = await fetch(`${BASE}/api/auth/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, name }),
-    });
-    if (!res.ok) {
-      const e = await res.json();
-      throw new Error(e.detail || "Registration failed");
-    }
-    const data = await res.json();
+    const data = await postAuth("/api/auth/register", { email, password, name });
     setTokens(data.access_token, data.refresh_token);
     setUser(data.user);
     setUserState(data.user);
