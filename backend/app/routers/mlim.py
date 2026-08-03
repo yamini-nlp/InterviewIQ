@@ -81,7 +81,7 @@ async def _persist_mlim_analysis(
     if session:
         updated_history = (belief_history + [result.gstl.goal_belief_distribution])[-50:]
         await db.sessions.update_one(
-            {"id": result.session_id},
+            {"id": result.session_id, "user_id": current_user["id"]},
             {"$set": {"goal_belief_history": updated_history}},
         )
 

@@ -61,7 +61,7 @@ Rephrase it naturally as a real interviewer would ask it. Return ONLY the rephra
         if db is not None:
             try:
                 await db.sessions.update_one(
-                    {"id": request.session_id},
+                    {"id": request.session_id, "user_id": current_user["id"]},
                     {"$push": {"answers": answer.model_dump()}},
                 )
             except Exception as db_error:

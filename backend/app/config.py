@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
     rate_limit_login: int = 5
     rate_limit_window_seconds: int = 60
+    account_lockout_threshold: int = 5
+    account_lockout_duration_minutes: int = 15
     redis_url: str = "redis://localhost:6379"
     mlim_clarification_entropy_threshold: float = 1.5
     mlim_context_horizon_k: int = 5
