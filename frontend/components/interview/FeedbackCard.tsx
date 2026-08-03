@@ -57,7 +57,7 @@ function CollapsibleSection({
 export function FeedbackCard({ feedback, loading = false, error = null, onRetry }: FeedbackCardProps) {
   if (loading) {
     return (
-      <Card className="space-y-5 border-white/8">
+      <Card className="space-y-5 border-neutral-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Skeleton width={90} height={22} rounded="full" />
@@ -80,7 +80,7 @@ export function FeedbackCard({ feedback, loading = false, error = null, onRetry 
 
   if (error) {
     return (
-      <Card className="border-white/8">
+      <Card className="border-neutral-200">
         <ErrorState message={error} onRetry={onRetry} retryLabel="Retry feedback" />
       </Card>
     );
@@ -89,7 +89,7 @@ export function FeedbackCard({ feedback, loading = false, error = null, onRetry 
   if (!feedback) return null;
 
   return (
-    <Card className="animate-slide-up space-y-5 border-white/8">
+    <Card className="animate-slide-up space-y-5 border-neutral-200">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Badge text={feedback.correctness} type="correctness" />
@@ -105,12 +105,12 @@ export function FeedbackCard({ feedback, loading = false, error = null, onRetry 
         <CollapsibleSection
           title="Strengths"
           icon={<CheckCircle2 size={12} />}
-          accentClass="text-success-400"
+          accentClass="text-success-600"
           defaultOpen
         >
           <ul className="space-y-1">
             {feedback.strengths.map((s, i) => (
-              <li key={i} className="text-sm text-neutral-300 flex gap-2">
+              <li key={i} className="text-sm text-neutral-700 flex gap-2">
                 <span className="text-success-500 mt-0.5">•</span>
                 {s}
               </li>
@@ -123,12 +123,12 @@ export function FeedbackCard({ feedback, loading = false, error = null, onRetry 
         <CollapsibleSection
           title="Areas to Improve"
           icon={<XCircle size={12} />}
-          accentClass="text-error-400"
+          accentClass="text-error-600"
           defaultOpen
         >
           <ul className="space-y-1">
             {feedback.weaknesses.map((w, i) => (
-              <li key={i} className="text-sm text-neutral-300 flex gap-2">
+              <li key={i} className="text-sm text-neutral-700 flex gap-2">
                 <span className="text-error-500 mt-0.5">•</span>
                 {w}
               </li>
@@ -140,11 +140,11 @@ export function FeedbackCard({ feedback, loading = false, error = null, onRetry 
       <CollapsibleSection
         title="Ideal Answer"
         icon={<Lightbulb size={12} />}
-        accentClass="text-primary-400"
+        accentClass="text-primary-600"
         defaultOpen={false}
       >
-        <div className="bg-white/3 rounded-xl p-4 border border-white/5">
-          <p className="text-sm text-neutral-300 leading-relaxed">{feedback.ideal_answer}</p>
+        <div className="bg-neutral-100 rounded-xl p-4 border border-neutral-200">
+          <p className="text-sm text-neutral-700 leading-relaxed">{feedback.ideal_answer}</p>
         </div>
       </CollapsibleSection>
 
@@ -152,12 +152,12 @@ export function FeedbackCard({ feedback, loading = false, error = null, onRetry 
         <CollapsibleSection
           title="Suggestions"
           icon={<TrendingUp size={12} />}
-          accentClass="text-warning-400"
+          accentClass="text-warning-600"
           defaultOpen={false}
         >
           <ul className="space-y-1">
             {feedback.suggestions.map((s, i) => (
-              <li key={i} className="text-sm text-neutral-300 flex gap-2">
+              <li key={i} className="text-sm text-neutral-700 flex gap-2">
                 <span className="text-warning-500 mt-0.5">→</span>
                 {s}
               </li>
