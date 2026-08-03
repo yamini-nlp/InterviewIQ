@@ -18,12 +18,12 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-night-950">
+    <div className="min-h-screen bg-neutral-50">
       <main className="pt-24 pb-16 px-6 max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="font-display text-3xl font-bold">Dashboard</h1>
-            <p className="text-gray-400 mt-1">Your interview history and performance</p>
+            <p className="text-neutral-500 mt-1">Your interview history and performance</p>
           </div>
           <Link href="/setup"><Button><Plus size={14} /> New Interview</Button></Link>
         </div>
@@ -33,7 +33,7 @@ export default function Dashboard() {
           </div>
         ) : sessions.length === 0 ? (
           <div className="text-center py-20">
-            <p className="text-gray-400 mb-4">No sessions yet. Start your first interview!</p>
+            <p className="text-neutral-500 mb-4">No sessions yet. Start your first interview!</p>
             <Link href="/setup"><Button>Start Practicing</Button></Link>
           </div>
         ) : (
