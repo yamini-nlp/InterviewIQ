@@ -6,6 +6,7 @@ from app.models.mlim import (
     MLIMAnalyzeRequest, MLIMAnalysis, MLIMSessionSummary,
     GoalState, InteractionEntry, MIComparisonResult,
     EscalationRecord, EscalationUpdateRequest, FairnessProbeResult,
+    ASLOutput, PELOutput, GSTLOutput, IFLOutput,
 )
 from app.services.mlim_service import run_asl, run_pel, run_gstl, run_ifl
 from app.services.mlim.benchmark import compute_mi_comparison
