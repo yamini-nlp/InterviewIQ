@@ -1,8 +1,17 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
+import { Check, X } from "lucide-react";
+
+function getPasswordChecks(password: string) {
+  return [
+    { label: "At least 8 characters", valid: password.length >= 8 },
+    { label: "One uppercase letter", valid: /[A-Z]/.test(password) },
+    { label: "One number", valid: /[0-9]/.test(password) },
+  ];
+}
 
 export default function Register() {
   const router = useRouter();
@@ -12,11 +21,19 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [passwordTouched, setPasswordTouched] = useState(false);
+
+  const passwordChecks = useMemo(() => getPasswordChecks(password), [password]);
+  const passwordValid = passwordChecks.every((c) => c.valid);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (password.length < 8) { setError("Password must be at least 8 characters"); return; }
+    setPasswordTouched(true);
+    if (!passwordValid) {
+      setError("Please meet all password requirements below.");
+      return;
+    }
     setLoading(true);
     try {
       await register(email, password, name);
@@ -68,10 +85,24 @@ export default function Register() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onBlur={() => setPasswordTouched(true)}
                 required
                 className="w-full rounded-xl px-4 py-3 bg-white/5 border border-white/10 text-white placeholder-gray-600 focus:outline-none focus:border-accent/50 transition-colors"
-                placeholder="Min. 8 characters"
+                placeholder="Min. 8 characters, 1 uppercase, 1 number"
               />
+              {(passwordTouched || password.length > 0) && (
+                <ul className="mt-2 space-y-1">
+                  {passwordChecks.map((check) => (
+                    <li
+                      key={check.label}
+                      className={`flex items-center gap-1.5 text-xs ${check.valid ? "text-green-400" : "text-gray-500"}`}
+                    >
+                      {check.valid ? <Check size={12} /> : <X size={12} />}
+                      {check.label}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             {error && (
