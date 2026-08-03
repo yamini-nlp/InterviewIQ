@@ -94,15 +94,133 @@ async def _persist_mlim_analysis(
         await db.mlim_escalations.insert_one(escalation_doc)
 
 
+def _fallback_asl() -> ASLOutput:
+    return ASLOutput(
+        sentiment="neutral",
+        sentiment_confidence=0.0,
+        valence=0.0,
+        arousal=0.0,
+        uncertainty_s=1.0,
+        affective_masking_detected=False,
+        masking_reason=None,
+        lexicon_sentiment="neutral",
+        lexicon_confidence=0.0,
+        lexicon_llm_disagreement=False,
+    )
+
+
+def _fallback_pel() -> PELOutput:
+    return PELOutput(
+        primary_speech_act="statement",
+        speech_act_confidence=0.0,
+        secondary_speech_acts=[],
+        concurrent_speech_acts=[],
+        is_interrogative=False,
+        sarcasm_detected=False,
+        pragmatic_inversion=False,
+        is_requesting_challenge=False,
+        is_expressing_frustration=False,
+        is_signaling_confusion=False,
+        is_face_saving=False,
+        is_seeking_validation=False,
+        is_committing_to_retry=False,
+        maxim_violations={},
+        gricean_implicature="",
+        pragmatic_context_label="unavailable",
+    )
+
+
+def _fallback_gstl(prior_goal_state: Optional[GoalState]) -> GSTLOutput:
+    if prior_goal_state is not None:
+        return GSTLOutput(
+            dominant_goal=prior_goal_state.dominant_goal,
+            goal_belief_distribution=prior_goal_state.goal_belief_distribution,
+            confidence_level=prior_goal_state.confidence_level,
+            goal_drift_detected=False,
+            session_trajectory=prior_goal_state.session_trajectory,
+            engagement_level=prior_goal_state.engagement_level,
+            stress_indicators=prior_goal_state.stress_indicators,
+            readiness_estimate=prior_goal_state.readiness_estimate,
+            recommended_system_action="encourage",
+            hiring_readiness_signal=prior_goal_state.hiring_readiness_signal,
+            belief_update_trace={},
+            goal_drift_kl_divergence=0.0,
+        )
+    return GSTLOutput(
+        dominant_goal="unknown",
+        goal_belief_distribution={"unknown": 1.0},
+        confidence_level=0.0,
+        goal_drift_detected=False,
+        session_trajectory="insufficient_data",
+        engagement_level=0.5,
+        stress_indicators=0.0,
+        readiness_estimate=0.5,
+        recommended_system_action="encourage",
+        hiring_readiness_signal=None,
+        belief_update_trace={},
+        goal_drift_kl_divergence=0.0,
+    )
+
+
+def _fallback_ifl() -> IFLOutput:
+    return IFLOutput(
+        intent_label="genuine_answer",
+        intent_confidence=0.0,
+        intent_distribution={"genuine_answer": 1.0},
+        raw_intent_distribution={},
+        feature_vector={},
+        entropy=0.0,
+        should_solicit_clarification=False,
+        clarification_prompt=None,
+        intent_aware_response_modifier="",
+        failure_mode_detected="none",
+        failure_mode_explanation=None,
+        attributions=[],
+        counterfactual="",
+    )
+
+
+async def _run_asl_safe(answer_text: str, face_snapshot, voice_features) -> ASLOutput:
+    try:
+        return await run_asl(answer_text, face_snapshot, voice_features)
+    except Exception as e:
+        logger.warning(f"MLIM ASL layer failed, using fallback: {e}")
+        return _fallback_asl()
+
+
+async def _run_pel_safe(answer_text: str, context_utterances, asl: ASLOutput) -> PELOutput:
+    try:
+        return await run_pel(answer_text, context_utterances, asl)
+    except Exception as e:
+        logger.warning(f"MLIM PEL layer failed, using fallback: {e}")
+        return _fallback_pel()
+
+
+async def _run_gstl_safe(**kwargs) -> GSTLOutput:
+    try:
+        return await run_gstl(**kwargs)
+    except Exception as e:
+        logger.warning(f"MLIM GSTL layer failed, using fallback: {e}")
+        return _fallback_gstl(kwargs.get("prior_goal_state"))
+
+
+async def _run_ifl_safe(**kwargs) -> IFLOutput:
+    try:
+        return await run_ifl(**kwargs)
+    except Exception as e:
+        logger.warning(f"MLIM IFL layer failed, using fallback: {e}")
+        return _fallback_ifl()
+
+
 @router.post("/analyze")
 async def analyze(request: MLIMAnalyzeRequest, current_user: dict = Depends(get_current_user)):
     try:
         db = get_db()
         session, belief_history = await _load_session_context(db, request.session_id, current_user)
 
-        asl = await run_asl(request.answer_text, request.face_snapshot, request.voice_features)
-        pel = await run_pel(request.answer_text, request.context_utterances, asl)
-        gstl = await run_gstl(
+        asl = await _run_asl_safe(request.answer_text, request.face_snapshot, request.voice_features)
+        pel = await _run_pel_safe(request.answer_text, request.context_utterances, asl)
+        gstl = await _run_gstl_safe(
             utterance=request.answer_text,
             job_role=request.job_role,
             question_text=request.question_text,
@@ -112,7 +230,7 @@ async def analyze(request: MLIMAnalyzeRequest, current_user: dict = Depends(get_
             pel=pel,
             belief_history=belief_history,
         )
-        ifl = await run_ifl(
+        ifl = await _run_ifl_safe(
             asl=asl,
             pel=pel,
             gstl=gstl,
@@ -164,13 +282,13 @@ async def analyze_stream(request: MLIMAnalyzeRequest, current_user: dict = Depen
 
     async def event_generator():
         try:
-            asl = await run_asl(request.answer_text, request.face_snapshot, request.voice_features)
+            asl = await _run_asl_safe(request.answer_text, request.face_snapshot, request.voice_features)
             yield _sse_event({"type": "layer", "layer": "asl", "data": asl.model_dump()})
 
-            pel = await run_pel(request.answer_text, request.context_utterances, asl)
+            pel = await _run_pel_safe(request.answer_text, request.context_utterances, asl)
             yield _sse_event({"type": "layer", "layer": "pel", "data": pel.model_dump()})
 
-            gstl = await run_gstl(
+            gstl = await _run_gstl_safe(
                 utterance=request.answer_text,
                 job_role=request.job_role,
                 question_text=request.question_text,
@@ -182,7 +300,7 @@ async def analyze_stream(request: MLIMAnalyzeRequest, current_user: dict = Depen
             )
             yield _sse_event({"type": "layer", "layer": "gstl", "data": gstl.model_dump()})
 
-            ifl = await run_ifl(
+            ifl = await _run_ifl_safe(
                 asl=asl,
                 pel=pel,
                 gstl=gstl,

@@ -113,6 +113,14 @@ export default function Simulation() {
       const clarificationPrompt = mlimResult?.ifl?.clarification_prompt ?? null;
       const mlimModifier = mlimResult?.ifl?.intent_aware_response_modifier ?? "";
 
+      if (!mlimResult) {
+        toast({
+          title: "Analytics not captured",
+          description: "This answer's MLIM analysis couldn't be recorded, but your interview continues normally.",
+          variant: "warning",
+        });
+      }
+
       const { response } = await simulateRespond({
         session_id: session.session_id,
         question_text: current.text,
