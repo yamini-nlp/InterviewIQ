@@ -28,7 +28,9 @@ export default function ReportPage() {
     const { default: html2canvas } = await import("html2canvas");
     const el = document.getElementById("report-content");
     if (!el) return;
-    const canvas = await html2canvas(el, { backgroundColor: "#08090c", scale: 2 });
+    const bgVar = getComputedStyle(document.documentElement).getPropertyValue("--color-neutral-50").trim();
+    const bgColor = bgVar ? `rgb(${bgVar.replace(/\s+/g, ", ")})` : "#ffffff";
+    const canvas = await html2canvas(el, { backgroundColor: bgColor, scale: 2 });
     const pdf = new jsPDF("p", "mm", "a4");
     const w = pdf.internal.pageSize.getWidth();
     const h = (canvas.height / canvas.width) * w;
@@ -37,12 +39,12 @@ export default function ReportPage() {
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-night-950 flex items-center justify-center">
+    <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
       <Loader2 className="animate-spin text-accent" size={32} />
     </div>
   );
   if (!report) return (
-    <div className="min-h-screen bg-night-950 flex items-center justify-center text-gray-400">
+    <div className="min-h-screen bg-neutral-50 flex items-center justify-center text-neutral-500">
       Report not found
     </div>
   );
@@ -55,12 +57,12 @@ export default function ReportPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-night-950">
+    <div className="min-h-screen bg-neutral-50">
       <main className="pt-24 pb-16 px-6 max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="font-display text-3xl font-bold">Interview Report</h1>
-            <p className="text-gray-400 mt-1">{report.completed_questions} of {report.total_questions} questions completed</p>
+            <p className="text-neutral-500 mt-1">{report.completed_questions} of {report.total_questions} questions completed</p>
           </div>
           <Button onClick={exportPDF} variant="outline">
             <Download size={14} /> Export PDF
@@ -70,16 +72,16 @@ export default function ReportPage() {
         <div id="report-content" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card className="md:col-span-2 flex flex-col items-center justify-center text-center py-8">
-              <p className="text-gray-500 text-sm mb-2">Overall Score</p>
+              <p className="text-neutral-500 text-sm mb-2">Overall Score</p>
               <p className={`font-display text-7xl font-bold ${scoreColor(report.overall_score)}`}>
                 {report.overall_score}
               </p>
-              <p className="text-gray-500 text-sm mt-1">out of 10</p>
+              <p className="text-neutral-500 text-sm mt-1">out of 10</p>
             </Card>
             <Card className="md:col-span-2">
               <ResponsiveContainer width="100%" height={180}>
                 <RadarChart data={radarData}>
-                  <PolarGrid stroke="rgba(255,255,255,0.05)" />
+                  <PolarGrid stroke="rgba(128,128,128,0.2)" />
                   <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: "#6b7280" }} />
                   <Radar dataKey="value" stroke="#6c63ff" fill="#6c63ff" fillOpacity={0.2} />
                 </RadarChart>
@@ -91,7 +93,7 @@ export default function ReportPage() {
             {Object.entries(report.category_scores).map(([key, val]) => (
               <Card key={key} className="flex items-center gap-4 py-4">
                 <div className="flex-1">
-                  <p className="text-sm capitalize text-gray-400 mb-1.5">{key.replace(/_/g, " ")}</p>
+                  <p className="text-sm capitalize text-neutral-500 mb-1.5">{key.replace(/_/g, " ")}</p>
                   <Progress value={val as number} />
                 </div>
                 <span className={`font-display font-bold text-lg ${scoreColor(val as number)}`}>
@@ -106,14 +108,14 @@ export default function ReportPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-red-400">
+                <CardTitle className="flex items-center gap-2 text-error-500">
                   <Target size={14} /> Weak Areas
                 </CardTitle>
               </CardHeader>
               <ul className="space-y-2">
                 {report.weak_areas.map((a, i) => (
-                  <li key={i} className="text-sm text-gray-300 flex gap-2">
-                    <span className="text-red-500 mt-0.5">•</span>{a}
+                  <li key={i} className="text-sm text-neutral-600 flex gap-2">
+                    <span className="text-error-500 mt-0.5">•</span>{a}
                   </li>
                 ))}
               </ul>
@@ -126,7 +128,7 @@ export default function ReportPage() {
               </CardHeader>
               <ul className="space-y-2">
                 {report.recommended_topics.map((t, i) => (
-                  <li key={i} className="text-sm text-gray-300 flex gap-2">
+                  <li key={i} className="text-sm text-neutral-600 flex gap-2">
                     <span className="text-accent">→</span>{t}
                   </li>
                 ))}
@@ -134,14 +136,14 @@ export default function ReportPage() {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-emerald-400">
+                <CardTitle className="flex items-center gap-2 text-success-500">
                   <TrendingUp size={14} /> Improvements
                 </CardTitle>
               </CardHeader>
               <ul className="space-y-2">
                 {report.suggested_improvements.map((s, i) => (
-                  <li key={i} className="text-sm text-gray-300 flex gap-2">
-                    <span className="text-emerald-500">✓</span>{s}
+                  <li key={i} className="text-sm text-neutral-600 flex gap-2">
+                    <span className="text-success-500">✓</span>{s}
                   </li>
                 ))}
               </ul>
@@ -152,15 +154,15 @@ export default function ReportPage() {
             <CardHeader><CardTitle>Question Breakdown</CardTitle></CardHeader>
             <div className="space-y-3">
               {report.question_breakdown.map((q, i) => (
-                <div key={i} className="border border-white/5 rounded-xl overflow-hidden">
+                <div key={i} className="border border-neutral-200 rounded-xl overflow-hidden">
                   <button
                     onClick={() => setExpandedIndex(expandedIndex === i ? null : i)}
-                    className="w-full text-left p-4 hover:bg-white/3 transition-colors"
+                    className="w-full text-left p-4 hover:bg-neutral-100 transition-colors"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-start gap-3 flex-1">
-                        <span className="text-xs text-gray-500 font-mono mt-0.5 flex-shrink-0">Q{i + 1}</span>
-                        <p className="text-sm text-gray-200 leading-relaxed">{q.question}</p>
+                        <span className="text-xs text-neutral-500 font-mono mt-0.5 flex-shrink-0">Q{i + 1}</span>
+                        <p className="text-sm text-neutral-800 leading-relaxed">{q.question}</p>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <Badge text={q.category} type="category" />
@@ -169,23 +171,23 @@ export default function ReportPage() {
                           {q.score}/10
                         </span>
                         {expandedIndex === i
-                          ? <ChevronUp size={14} className="text-gray-500" />
-                          : <ChevronDown size={14} className="text-gray-500" />
+                          ? <ChevronUp size={14} className="text-neutral-500" />
+                          : <ChevronDown size={14} className="text-neutral-500" />
                         }
                       </div>
                     </div>
                   </button>
 
                   {expandedIndex === i && (
-                    <div className="border-t border-white/5 p-4 space-y-4 bg-white/2">
+                    <div className="border-t border-neutral-200 p-4 space-y-4 bg-neutral-100">
                       <div>
                         <p className="text-xs font-medium text-accent mb-2">Your Answer</p>
-                        <div className="bg-white/3 rounded-xl p-4 border border-white/5">
-                          <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">{q.answer}</p>
+                        <div className="bg-neutral-100 rounded-xl p-4 border border-neutral-200">
+                          <p className="text-sm text-neutral-800 leading-relaxed whitespace-pre-wrap">{q.answer}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500">Result:</span>
+                        <span className="text-xs text-neutral-500">Result:</span>
                         <Badge text={q.correctness} type="correctness" />
                       </div>
                     </div>
