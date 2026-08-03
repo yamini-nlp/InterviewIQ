@@ -14,7 +14,7 @@ function ScoreArc({ value }: { value: number }) {
   return (
     <div className="relative w-16 h-16 flex-shrink-0">
       <svg viewBox="0 0 64 64" className="w-full h-full -rotate-90">
-        <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="6" />
+        <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(128,128,128,0.2)" strokeWidth="6" />
         <circle
           cx="32" cy="32" r="26" fill="none"
           stroke={color} strokeWidth="6"
@@ -30,9 +30,9 @@ function ScoreArc({ value }: { value: number }) {
 }
 
 function trajectoryIcon(t: string) {
-  if (t === "improving") return <TrendingUp size={14} className="text-emerald-400" />;
-  if (t === "declining") return <TrendingDown size={14} className="text-red-400" />;
-  return <Minus size={14} className="text-gray-400" />;
+  if (t === "improving") return <TrendingUp size={14} className="text-success-500" />;
+  if (t === "declining") return <TrendingDown size={14} className="text-error-500" />;
+  return <Minus size={14} className="text-neutral-500" />;
 }
 
 const FAILURE_MODE_DESCRIPTIONS: Record<string, string> = {
@@ -69,14 +69,14 @@ export function MLIMReportSection({ sessionId }: Props) {
     return (
       <div className="glass rounded-2xl p-6 flex items-center gap-3">
         <Loader2 size={16} className="animate-spin text-accent" />
-        <span className="text-sm text-gray-400">Loading MLIM intent analysis...</span>
+        <span className="text-sm text-neutral-500">Loading MLIM intent analysis...</span>
       </div>
     );
   }
 
   if (error || !summary) {
     return (
-      <div className="glass rounded-2xl p-4 text-sm text-gray-500">
+      <div className="glass rounded-2xl p-4 text-sm text-neutral-500">
         MLIM analysis not available for this session.
       </div>
     );
@@ -90,64 +90,64 @@ export function MLIMReportSection({ sessionId }: Props) {
     <div className="glass rounded-2xl p-6 space-y-5">
       <div className="flex items-center gap-2">
         <Brain size={18} className="text-accent" />
-        <h2 className="text-base font-semibold text-white">MLIM Intent Analysis</h2>
-        <span className="text-xs text-gray-500 ml-auto font-mono">{summary.total_analyses} turns analyzed</span>
+        <h2 className="text-base font-semibold text-neutral-900">MLIM Intent Analysis</h2>
+        <span className="text-xs text-neutral-500 ml-auto font-mono">{summary.total_analyses} turns analyzed</span>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white/3 rounded-xl p-3 flex items-center gap-3">
+        <div className="bg-neutral-100 rounded-xl p-3 flex items-center gap-3">
           <ScoreArc value={summary.readiness_estimate} />
           <div>
-            <p className="text-[10px] text-gray-500 uppercase tracking-wider">Readiness</p>
-            <p className="text-xs text-white font-mono">{(summary.readiness_estimate * 100).toFixed(0)}%</p>
+            <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Readiness</p>
+            <p className="text-xs text-neutral-900 font-mono">{(summary.readiness_estimate * 100).toFixed(0)}%</p>
           </div>
         </div>
-        <div className="bg-white/3 rounded-xl p-3">
-          <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Trajectory</p>
+        <div className="bg-neutral-100 rounded-xl p-3">
+          <p className="text-[10px] text-neutral-500 uppercase tracking-wider mb-1">Trajectory</p>
           <div className="flex items-center gap-1.5">
             {trajectoryIcon(summary.session_trajectory)}
-            <span className="text-xs text-white font-mono">{summary.session_trajectory}</span>
+            <span className="text-xs text-neutral-900 font-mono">{summary.session_trajectory}</span>
           </div>
         </div>
-        <div className="bg-white/3 rounded-xl p-3">
-          <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Avg Entropy</p>
+        <div className="bg-neutral-100 rounded-xl p-3">
+          <p className="text-[10px] text-neutral-500 uppercase tracking-wider mb-1">Avg Entropy</p>
           <p className="text-xs text-cyan-300 font-mono">{summary.average_entropy.toFixed(3)}</p>
-          <p className="text-[9px] text-gray-600">intent uncertainty</p>
+          <p className="text-[9px] text-neutral-600">intent uncertainty</p>
         </div>
-        <div className="bg-white/3 rounded-xl p-3">
-          <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Anomalies</p>
+        <div className="bg-neutral-100 rounded-xl p-3">
+          <p className="text-[10px] text-neutral-500 uppercase tracking-wider mb-1">Anomalies</p>
           <div className="space-y-0.5">
             {summary.affective_masking_count > 0 && (
               <p className="text-[10px] text-yellow-400">{summary.affective_masking_count}× masking</p>
             )}
             {summary.sarcasm_count > 0 && (
-              <p className="text-[10px] text-red-400">{summary.sarcasm_count}× sarcasm</p>
+              <p className="text-[10px] text-error-500">{summary.sarcasm_count}× sarcasm</p>
             )}
             {summary.goal_drift_count > 0 && (
               <p className="text-[10px] text-orange-400">{summary.goal_drift_count}× goal drift</p>
             )}
             {summary.affective_masking_count === 0 && summary.sarcasm_count === 0 && summary.goal_drift_count === 0 && (
-              <p className="text-[10px] text-emerald-400">None detected</p>
+              <p className="text-[10px] text-success-500">None detected</p>
             )}
           </div>
         </div>
       </div>
 
       <div>
-        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Intent Distribution Across Session</p>
+        <p className="text-xs text-neutral-500 uppercase tracking-wider mb-3">Intent Distribution Across Session</p>
         <div className="space-y-2">
           {dominantIntents.map(([intent, prob]) => (
             <div key={intent}>
               <div className="flex justify-between items-center mb-1">
                 <div>
-                  <span className="text-xs text-gray-300">{intent.replace(/_/g, " ")}</span>
+                  <span className="text-xs text-neutral-700">{intent.replace(/_/g, " ")}</span>
                   {INTENT_DESCRIPTIONS[intent] && (
-                    <span className="text-[9px] text-gray-600 ml-2">{INTENT_DESCRIPTIONS[intent]}</span>
+                    <span className="text-[9px] text-neutral-600 ml-2">{INTENT_DESCRIPTIONS[intent]}</span>
                   )}
                 </div>
-                <span className="text-xs font-mono text-gray-400">{(prob * 100).toFixed(1)}%</span>
+                <span className="text-xs font-mono text-neutral-500">{(prob * 100).toFixed(1)}%</span>
               </div>
-              <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-neutral-200 rounded-full overflow-hidden">
                 <div className="h-full bg-accent/60 rounded-full" style={{ width: `${prob * 100}%` }} />
               </div>
             </div>
@@ -157,7 +157,7 @@ export function MLIMReportSection({ sessionId }: Props) {
 
       {summary.failure_modes_detected.length > 0 && (
         <div>
-          <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">MLIM Failure Modes Detected</p>
+          <p className="text-xs text-neutral-500 uppercase tracking-wider mb-3">MLIM Failure Modes Detected</p>
           <div className="space-y-2">
             {summary.failure_modes_detected.map((fm) => (
               <div key={fm} className="bg-yellow-400/5 border border-yellow-400/15 rounded-xl p-3">
@@ -165,7 +165,7 @@ export function MLIMReportSection({ sessionId }: Props) {
                   <AlertTriangle size={12} className="text-yellow-400" />
                   <span className="text-xs font-semibold text-yellow-300">{fm.replace(/_/g, " ")}</span>
                 </div>
-                <p className="text-[11px] text-gray-400">{FAILURE_MODE_DESCRIPTIONS[fm] || fm}</p>
+                <p className="text-[11px] text-neutral-500">{FAILURE_MODE_DESCRIPTIONS[fm] || fm}</p>
               </div>
             ))}
           </div>
@@ -174,14 +174,14 @@ export function MLIMReportSection({ sessionId }: Props) {
 
       {summary.failure_modes_detected.length === 0 && (
         <div className="flex items-center gap-2 bg-emerald-500/5 border border-emerald-500/15 rounded-xl p-3">
-          <CheckCircle size={14} className="text-emerald-400" />
+          <CheckCircle size={14} className="text-success-500" />
           <p className="text-xs text-emerald-300">No MLIM failure modes detected — intent signals were consistent throughout.</p>
         </div>
       )}
 
       {summary.recommended_actions.length > 0 && (
         <div>
-          <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Recommended Development Areas</p>
+          <p className="text-xs text-neutral-500 uppercase tracking-wider mb-2">Recommended Development Areas</p>
           <div className="flex flex-wrap gap-1.5">
             {summary.recommended_actions.map((action) => (
               <span key={action} className="text-[10px] px-2 py-1 rounded-lg bg-accent/10 border border-accent/20 text-accent font-mono">
@@ -192,7 +192,7 @@ export function MLIMReportSection({ sessionId }: Props) {
         </div>
       )}
 
-      <p className="text-[10px] text-gray-600 border-t border-white/5 pt-3">
+      <p className="text-[10px] text-neutral-600 border-t border-neutral-200 pt-3">
         MLIM (Multi-Layer Intent Modeling) — Layer 1: Affective Signal (ASL) · Layer 2: Pragmatic Encoding (PEL) · Layer 3: Goal-State Tracking (GSTL) · Layer 4: Intent Fusion (IFL)
       </p>
     </div>
