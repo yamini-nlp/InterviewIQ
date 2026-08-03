@@ -27,20 +27,17 @@ export async function authorizedFetch(
   init: RequestInit,
   token: string | null
 ): Promise<Response> {
-  const withAuth = (t: string | null): RequestInit => ({
+  const withCredentials = (): RequestInit => ({
     ...init,
-    headers: {
-      ...(init.headers as Record<string, string> | undefined),
-      ...(t ? { Authorization: `Bearer ${t}` } : {}),
-    },
+    credentials: "include",
   });
 
-  let response = await fetch(url, withAuth(token));
+  let response = await fetch(url, withCredentials());
 
   if (response.status === 401) {
-    const newToken = await refreshAccessToken();
-    if (newToken) {
-      response = await fetch(url, withAuth(newToken));
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      response = await fetch(url, withCredentials());
     }
   }
 

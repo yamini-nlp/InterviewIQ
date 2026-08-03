@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Request
+from fastapi import APIRouter, HTTPException, status, Request, Response
 from pydantic import BaseModel
 from app.database import get_db
 from app.auth.service import (
@@ -15,6 +15,41 @@ import uuid
 import re
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+ACCESS_COOKIE = "rr_access_token"
+REFRESH_COOKIE = "rr_refresh_token"
+
+
+def _cookie_secure() -> bool:
+    return settings.environment != "development"
+
+
+def set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
+    secure = _cookie_secure()
+    response.set_cookie(
+        key=ACCESS_COOKIE,
+        value=access_token,
+        max_age=settings.access_token_expire_minutes * 60,
+        path="/",
+        httponly=True,
+        secure=secure,
+        samesite="strict",
+    )
+    response.set_cookie(
+        key=REFRESH_COOKIE,
+        value=refresh_token,
+        max_age=settings.refresh_token_expire_days * 24 * 60 * 60,
+        path="/",
+        httponly=True,
+        secure=secure,
+        samesite="strict",
+    )
+
+
+def clear_auth_cookies(response: Response) -> None:
+    secure = _cookie_secure()
+    response.delete_cookie(key=ACCESS_COOKIE, path="/", secure=secure, samesite="strict")
+    response.delete_cookie(key=REFRESH_COOKIE, path="/", secure=secure, samesite="strict")
 
 
 def validate_password(password: str) -> None:
@@ -37,12 +72,8 @@ class LoginRequest(BaseModel):
     password: str
 
 
-class RefreshRequest(BaseModel):
-    refresh_token: str
-
-
 @router.post("/register", status_code=201)
-async def register(req: RegisterRequest, request: Request):
+async def register(req: RegisterRequest, request: Request, response: Response):
     client_ip = request.client.host if request.client else "unknown"
     await check_rate_limit(
         key=f"register:{client_ip}",
@@ -76,9 +107,9 @@ async def register(req: RegisterRequest, request: Request):
     await db.refresh_tokens.insert_one(
         {"jti": jti, "user_id": user_id, "expires_at": expire_at}
     )
+    set_auth_cookies(response, access, refresh)
     return {
         "access_token": access,
-        "refresh_token": refresh,
         "user": {
             "id": user_id,
             "email": req.email.lower().strip(),
@@ -88,7 +119,7 @@ async def register(req: RegisterRequest, request: Request):
 
 
 @router.post("/login")
-async def login(req: LoginRequest, request: Request):
+async def login(req: LoginRequest, request: Request, response: Response):
     client_ip = request.client.host if request.client else "unknown"
     await check_rate_limit(
         key=f"login:{client_ip}",
@@ -112,9 +143,9 @@ async def login(req: LoginRequest, request: Request):
     await db.refresh_tokens.insert_one(
         {"jti": jti, "user_id": user["id"], "expires_at": expire_at}
     )
+    set_auth_cookies(response, access, refresh)
     return {
         "access_token": access,
-        "refresh_token": refresh,
         "user": {
             "id": user["id"],
             "email": user["email"],
@@ -124,9 +155,13 @@ async def login(req: LoginRequest, request: Request):
 
 
 @router.post("/refresh")
-async def refresh(req: RefreshRequest):
-    payload = decode_token(req.refresh_token)
+async def refresh(request: Request, response: Response):
+    refresh_token = request.cookies.get(REFRESH_COOKIE)
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="No refresh token provided")
+    payload = decode_token(refresh_token)
     if not payload or payload.get("type") != "refresh":
+        clear_auth_cookies(response)
         raise HTTPException(status_code=401, detail="Invalid refresh token")
     db = get_db()
     if db is None:
@@ -134,6 +169,7 @@ async def refresh(req: RefreshRequest):
     jti = payload.get("jti")
     stored = await db.refresh_tokens.find_one({"jti": jti})
     if not stored:
+        clear_auth_cookies(response)
         raise HTTPException(status_code=401, detail="Refresh token revoked or not found")
     await db.refresh_tokens.delete_one({"jti": jti})
     new_access = create_access_token(payload["sub"])
@@ -142,15 +178,19 @@ async def refresh(req: RefreshRequest):
     await db.refresh_tokens.insert_one(
         {"jti": new_jti, "user_id": payload["sub"], "expires_at": expire_at}
     )
-    return {"access_token": new_access, "refresh_token": new_refresh}
+    set_auth_cookies(response, new_access, new_refresh)
+    return {"access_token": new_access}
 
 
 @router.post("/logout")
-async def logout(req: RefreshRequest):
-    payload = decode_token(req.refresh_token)
-    if payload:
-        jti = payload.get("jti")
-        db = get_db()
-        if db is not None and jti:
-            await db.refresh_tokens.delete_one({"jti": jti})
+async def logout(request: Request, response: Response):
+    refresh_token = request.cookies.get(REFRESH_COOKIE)
+    if refresh_token:
+        payload = decode_token(refresh_token)
+        if payload:
+            jti = payload.get("jti")
+            db = get_db()
+            if db is not None and jti:
+                await db.refresh_tokens.delete_one({"jti": jti})
+    clear_auth_cookies(response)
     return {"message": "Logged out"}

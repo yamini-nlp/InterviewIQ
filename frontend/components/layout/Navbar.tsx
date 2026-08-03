@@ -135,9 +135,9 @@ function UserMenu() {
           <button
             type="button"
             role="menuitem"
-            onClick={() => {
+            onClick={async () => {
               close();
-              logout();
+              await logout();
             }}
             className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-error-500 hover:bg-error-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset"
           >

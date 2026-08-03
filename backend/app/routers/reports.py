@@ -119,9 +119,12 @@ async def generate(session_id: str, current_user: dict = Depends(get_current_use
                         "feedbacks": [f.model_dump() for f in session.feedbacks],
                     }},
                 )
-                existing = await db.reports.find_one({"session_id": session_id})
+                existing = await db.reports.find_one({"session_id": session_id, "user_id": current_user["id"]})
                 if existing:
-                    await db.reports.replace_one({"session_id": session_id}, report.model_dump())
+                    await db.reports.replace_one(
+                        {"session_id": session_id, "user_id": current_user["id"]},
+                        report.model_dump(),
+                    )
                 else:
                     await db.reports.insert_one(report.model_dump())
             except Exception as db_error:

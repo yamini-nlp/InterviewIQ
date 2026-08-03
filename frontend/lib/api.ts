@@ -1,27 +1,25 @@
-import { getAccessToken, refreshAccessToken } from "@/lib/auth";
+import { refreshAccessToken } from "@/lib/auth";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL;
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  let token = getAccessToken();
-
-  const makeRequest = async (t: string | null) => {
+  const makeRequest = async () => {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      ...(t ? { Authorization: `Bearer ${t}` } : {}),
     };
     return fetch(`${BASE}${path}`, {
       ...options,
+      credentials: "include",
       headers: { ...headers, ...(options?.headers as Record<string, string> || {}) },
     });
   };
 
-  let res = await makeRequest(token);
+  let res = await makeRequest();
 
   if (res.status === 401) {
-    token = await refreshAccessToken();
-    if (token) {
-      res = await makeRequest(token);
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      res = await makeRequest();
     } else {
       if (typeof window !== "undefined") window.location.href = "/login";
       throw new Error("Session expired. Please log in again.");
@@ -50,23 +48,22 @@ export async function generateQuestions(payload: {
 }
 
 export async function transcribeAudio(blob: Blob): Promise<{ transcript: string }> {
-  let token = getAccessToken();
   const form = new FormData();
   form.append("audio", blob, "audio.webm");
 
   let res = await fetch(`${BASE}/api/questions/transcribe`, {
     method: "POST",
     body: form,
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials: "include",
   });
 
   if (res.status === 401) {
-    token = await refreshAccessToken();
-    if (token) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
       res = await fetch(`${BASE}/api/questions/transcribe`, {
         method: "POST",
         body: form,
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
       });
     }
   }
@@ -117,17 +114,16 @@ export async function getSessions() {
 }
 
 export async function exportUserData(): Promise<Blob> {
-  let token = getAccessToken();
-  const doFetch = (t: string | null) =>
+  const doFetch = () =>
     fetch(`${BASE}/api/privacy/export`, {
-      headers: t ? { Authorization: `Bearer ${t}` } : {},
+      credentials: "include",
     });
 
-  let res = await doFetch(token);
+  let res = await doFetch();
   if (res.status === 401) {
-    token = await refreshAccessToken();
-    if (!token) throw new Error("Session expired. Please log in again.");
-    res = await doFetch(token);
+    const refreshed = await refreshAccessToken();
+    if (!refreshed) throw new Error("Session expired. Please log in again.");
+    res = await doFetch();
   }
   if (!res.ok) throw new Error("Couldn't export your data. Please try again.");
   return res.blob();

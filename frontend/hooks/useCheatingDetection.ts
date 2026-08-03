@@ -132,7 +132,8 @@ export function useCheatingDetection(active: boolean, micStreamRef?: React.Mutab
     try {
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/integrity/events`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ events: toFlush.map((e) => ({ ...e, session_id: sessionId })) }),
       });
     } catch {

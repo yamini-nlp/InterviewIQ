@@ -14,7 +14,6 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/hooks/useToast";
 import { useMLIM } from "@/hooks/useMLIM";
 import { useCheatingDetection } from "@/hooks/useCheatingDetection";
-import { getAccessToken } from "@/lib/auth";
 import { Loader2, ChevronRight, AlertTriangle, Send, Keyboard, Mic, Volume2 } from "lucide-react";
 
 interface Message {
@@ -155,8 +154,7 @@ export default function Simulation() {
     if (isLast) {
       setGeneratingReport(true);
       try {
-        const token = getAccessToken();
-        if (token) await cheating.flushEvents(session.session_id, token);
+        await cheating.flushEvents(session.session_id, "");
         const report = await generateReport(session.session_id);
         saveSession({ ...session, report });
         router.push(`/report/${session.session_id}`);

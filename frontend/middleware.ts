@@ -2,32 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 
 const PROTECTED = ["/setup", "/simulation", "/practice", "/dashboard", "/report", "/settings"];
 
-function setAuthCookies(response: NextResponse, access: string, refresh: string, secure: boolean) {
-  response.cookies.set("rr_access_token", access, {
-    path: "/",
-    maxAge: 900,
-    sameSite: "strict",
-    secure,
-  });
-  response.cookies.set("rr_refresh_token", refresh, {
-    path: "/",
-    maxAge: 604800,
-    sameSite: "strict",
-    secure,
-  });
-}
-
-async function tryRefresh(refreshToken: string): Promise<{ access_token: string; refresh_token: string } | null> {
+async function tryRefresh(refreshToken: string): Promise<string[] | null> {
   try {
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/refresh`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: refreshToken }),
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: `rr_refresh_token=${refreshToken}`,
+      },
     });
     if (!res.ok) return null;
-    const data = await res.json();
-    if (!data.access_token || !data.refresh_token) return null;
-    return { access_token: data.access_token, refresh_token: data.refresh_token };
+    const setCookies = res.headers.getSetCookie ? res.headers.getSetCookie() : [];
+    if (!setCookies || setCookies.length === 0) return null;
+    return setCookies;
   } catch {
     return null;
   }
@@ -43,11 +30,12 @@ export async function middleware(request: NextRequest) {
 
   const refreshToken = request.cookies.get("rr_refresh_token")?.value;
   if (refreshToken) {
-    const refreshed = await tryRefresh(refreshToken);
-    if (refreshed) {
+    const setCookies = await tryRefresh(refreshToken);
+    if (setCookies) {
       const response = NextResponse.next();
-      const secure = request.nextUrl.protocol === "https:";
-      setAuthCookies(response, refreshed.access_token, refreshed.refresh_token, secure);
+      for (const cookie of setCookies) {
+        response.headers.append("set-cookie", cookie);
+      }
       return response;
     }
   }

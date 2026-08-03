@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.auth.service import decode_token
 from app.database import get_db
@@ -9,15 +9,18 @@ bearer = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
+    request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer),
 ) -> dict:
-    if credentials is None:
+    token = request.cookies.get("rr_access_token")
+    if not token and credentials is not None:
+        token = credentials.credentials
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    token = credentials.credentials
     payload = decode_token(token)
     if not payload or payload.get("type") != "access":
         raise HTTPException(

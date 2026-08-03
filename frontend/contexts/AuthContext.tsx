@@ -1,6 +1,6 @@
 "use client";
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
-import { getUser, setUser, setTokens, clearTokens, getAccessToken } from "@/lib/auth";
+import { getUser, setUser, clearTokens } from "@/lib/auth";
 
 interface User {
   id: string;
@@ -13,7 +13,7 @@ interface AuthContextValue {
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isLoading: boolean;
 }
 
@@ -42,6 +42,7 @@ async function postAuth(path: string, payload: Record<string, unknown>) {
     res = await fetch(`${BASE}${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify(payload),
     });
   } catch {
@@ -64,31 +65,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const u = getUser();
-    const t = getAccessToken();
-    if (u && t) {
+    if (u) {
       setUserState(u);
-      setToken(t);
+      setToken("cookie");
     }
     setIsLoading(false);
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
     const data = await postAuth("/api/auth/login", { email, password });
-    setTokens(data.access_token, data.refresh_token);
     setUser(data.user);
     setUserState(data.user);
-    setToken(data.access_token);
+    setToken(data.access_token ?? "cookie");
   }, []);
 
   const register = useCallback(async (email: string, password: string, name: string) => {
     const data = await postAuth("/api/auth/register", { email, password, name });
-    setTokens(data.access_token, data.refresh_token);
     setUser(data.user);
     setUserState(data.user);
-    setToken(data.access_token);
+    setToken(data.access_token ?? "cookie");
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    if (BASE) {
+      try {
+        await fetch(`${BASE}/api/auth/logout`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+        });
+      } catch {
+        // Network failures must never block a local logout.
+      }
+    }
     clearTokens();
     setUserState(null);
     setToken(null);

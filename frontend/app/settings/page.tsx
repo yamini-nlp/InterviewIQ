@@ -64,7 +64,7 @@ export default function SettingsPage() {
     try {
       await deleteAccount();
       toast({ title: "Account deleted", description: "Sorry to see you go.", variant: "success" });
-      logout();
+      await logout();
       router.push("/");
     } catch (err) {
       toast({
@@ -77,8 +77,8 @@ export default function SettingsPage() {
     }
   }, [logout, router, toast]);
 
-  const handleLogout = useCallback(() => {
-    logout();
+  const handleLogout = useCallback(async () => {
+    await logout();
     router.push("/login");
   }, [logout, router]);
 
