@@ -108,11 +108,11 @@ export default function SettingsPage() {
   }, [router, toast]);
 
   return (
-    <div className="min-h-screen bg-night-950">
+    <div className="min-h-screen bg-neutral-50">
       <main className="pt-24 pb-16 px-6 max-w-3xl mx-auto space-y-6">
         <div>
           <h1 className="font-display text-3xl font-bold">Settings</h1>
-          <p className="text-gray-400 mt-1">Manage your account, appearance, and data</p>
+          <p className="text-neutral-500 mt-1">Manage your account, appearance, and data</p>
         </div>
 
         <Card>
