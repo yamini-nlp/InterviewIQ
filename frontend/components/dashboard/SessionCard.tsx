@@ -10,20 +10,20 @@ export function SessionCard({ session }: { session: Session }) {
     <Card className="hover:border-accent/20 transition-all duration-300">
       <div className="flex items-start justify-between mb-3">
         <div>
-          <p className="font-display font-semibold text-white">{session.job_role}</p>
-          <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+          <p className="font-display font-semibold text-neutral-900">{session.job_role}</p>
+          <p className="text-xs text-neutral-500 flex items-center gap-1 mt-1">
             <Clock size={10} />{formatDate(session.created_at)}
           </p>
         </div>
-        <span className={`text-xs px-2 py-1 rounded-lg ${session.mode === "practice" ? "bg-blue-500/15 text-blue-400" : "bg-purple-500/15 text-purple-400"}`}>
+        <span className={`text-xs px-2 py-1 rounded-lg ${session.mode === "practice" ? "bg-info-500/15 text-info-600" : "bg-purple-500/15 text-purple-700 dark:text-purple-400"}`}>
           {session.mode}
         </span>
       </div>
       {session.overall_score !== undefined && (
         <div className="flex items-center gap-2 mb-3">
-          <BarChart2 size={12} className="text-gray-500" />
+          <BarChart2 size={12} className="text-neutral-500" />
           <span className={`text-sm font-bold ${scoreColor(session.overall_score)}`}>{session.overall_score}/10</span>
-          <span className="text-xs text-gray-500">overall score</span>
+          <span className="text-xs text-neutral-500">overall score</span>
         </div>
       )}
       {session.completed_at && (
