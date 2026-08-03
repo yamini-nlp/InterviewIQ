@@ -135,3 +135,9 @@ export async function deleteAccount() {
     body: JSON.stringify({ confirm: true }),
   });
 }
+
+export async function logoutAllDevices() {
+  return apiFetch<{ message: string; revoked_count: number }>("/api/auth/logout-all", {
+    method: "POST",
+  });
+}

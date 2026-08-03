@@ -7,8 +7,9 @@ import { Dialog } from "@/components/ui/Dialog";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/useToast";
 import { getTheme, setTheme as persistTheme, type Theme } from "@/lib/theme";
-import { exportUserData, deleteAccount } from "@/lib/api";
-import { Sun, Moon, Monitor, Download, Trash2, LogOut } from "lucide-react";
+import { exportUserData, deleteAccount, logoutAllDevices } from "@/lib/api";
+import { clearTokens } from "@/lib/auth";
+import { Sun, Moon, Monitor, Download, Trash2, LogOut, ShieldOff } from "lucide-react";
 
 const THEME_OPTIONS: { value: Theme; label: string; icon: typeof Sun }[] = [
   { value: "light", label: "Light", icon: Sun },
@@ -25,6 +26,8 @@ export default function SettingsPage() {
   const [exporting, setExporting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [signOutAllDialogOpen, setSignOutAllDialogOpen] = useState(false);
+  const [signingOutAll, setSigningOutAll] = useState(false);
 
   useEffect(() => {
     setThemeState(getTheme());
@@ -82,6 +85,28 @@ export default function SettingsPage() {
     router.push("/login");
   }, [logout, router]);
 
+  const handleSignOutAllDevices = useCallback(async () => {
+    setSigningOutAll(true);
+    try {
+      await logoutAllDevices();
+      clearTokens();
+      toast({
+        title: "Signed out everywhere",
+        description: "All of your active sessions have been revoked.",
+        variant: "success",
+      });
+      router.push("/login");
+    } catch (err) {
+      toast({
+        title: "Couldn't sign out of all devices",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "error",
+      });
+      setSigningOutAll(false);
+      setSignOutAllDialogOpen(false);
+    }
+  }, [router, toast]);
+
   return (
     <div className="min-h-screen bg-night-950">
       <main className="pt-24 pb-16 px-6 max-w-3xl mx-auto space-y-6">
@@ -105,9 +130,12 @@ export default function SettingsPage() {
               <span className="font-medium text-neutral-900">{user?.email ?? "—"}</span>
             </div>
           </CardContent>
-          <CardFooter>
+          <CardFooter className="justify-between">
             <Button variant="outline" size="sm" onClick={handleLogout}>
               <LogOut size={14} /> Log out
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setSignOutAllDialogOpen(true)}>
+              <ShieldOff size={14} /> Sign out of all devices
             </Button>
           </CardFooter>
         </Card>
@@ -170,6 +198,22 @@ export default function SettingsPage() {
           </Button>
           <Button variant="danger" size="sm" onClick={handleDeleteAccount} loading={deleting}>
             Delete permanently
+          </Button>
+        </div>
+      </Dialog>
+
+      <Dialog
+        open={signOutAllDialogOpen}
+        onClose={() => !signingOutAll && setSignOutAllDialogOpen(false)}
+        title="Sign out of all devices?"
+        description="This will end every active session for your account, including this one. You'll need to log in again everywhere."
+      >
+        <div className="flex justify-end gap-2 mt-2">
+          <Button variant="outline" size="sm" onClick={() => setSignOutAllDialogOpen(false)} disabled={signingOutAll}>
+            Cancel
+          </Button>
+          <Button variant="danger" size="sm" onClick={handleSignOutAllDevices} loading={signingOutAll}>
+            Sign out everywhere
           </Button>
         </div>
       </Dialog>
