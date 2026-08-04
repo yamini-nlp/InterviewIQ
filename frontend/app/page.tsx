@@ -109,13 +109,6 @@ export default function Home() {
           backgroundImage: "radial-gradient(ellipse 900px 500px at 50% -10%, rgba(108,99,255,0.16), transparent 60%)",
         }}
       >
-        <div className="relative z-10 max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 mb-7 px-4 py-1.5 rounded-full" style={{ background: "rgba(108,99,255,0.08)", border: "1px solid rgba(108,99,255,0.22)" }}>
-            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-            <span className="font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: "#a78bfa" }}>
-              Multi-Layer Intent Modeling
-            </span>
-          </div>
 
           <h1 className="font-display font-extrabold uppercase leading-[0.98] text-white text-[2.6rem] sm:text-6xl lg:text-[4.25rem] tracking-tight">
             InterviewIQ
@@ -165,18 +158,6 @@ export default function Home() {
               </div>
               <h3 className="font-display font-semibold text-white text-sm mb-1.5">{f.label}</h3>
               <p className="font-sans text-xs leading-relaxed" style={{ color: "#9ca3af" }}>{f.desc}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="relative z-10 mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
-          {[
-            { v: "4", l: "MLIM layers" }, { v: "8", l: "Intent labels" },
-            { v: "7", l: "Emotion axes" }, { v: "2", l: "Groq models" },
-          ].map((s) => (
-            <div key={s.l} className="flex items-baseline gap-1.5">
-              <span className="font-display text-base font-bold text-white">{s.v}</span>
-              <span className="font-mono text-[9.5px] uppercase tracking-[0.12em]" style={{ color: "#9ca3af" }}>{s.l}</span>
             </div>
           ))}
         </div>
