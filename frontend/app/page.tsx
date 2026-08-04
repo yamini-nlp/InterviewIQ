@@ -109,7 +109,7 @@ export default function Home() {
           backgroundImage: "radial-gradient(ellipse 900px 500px at 50% -10%, rgba(108,99,255,0.16), transparent 60%)",
         }}
       >
-
+        <div className="relative z-10 max-w-3xl mx-auto text-center">
           <h1 className="font-display font-extrabold uppercase leading-[0.98] text-white text-[2.6rem] sm:text-6xl lg:text-[4.25rem] tracking-tight">
             InterviewIQ
           </h1>
