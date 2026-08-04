@@ -31,6 +31,7 @@ interface Props {
 
 const EC: Record<string, string> = { happy: "#10b981", sad: "#60a5fa", angry: "#ef4444", fearful: "#f59e0b", disgusted: "#a855f7", surprised: "#06b6d4", neutral: "#9ca3af" };
 const IC: Record<string, string> = { genuine_answer: "#10b981", face_saving_assertion: "#f59e0b", request_for_challenge: "#60a5fa", expressing_confusion: "#fb923c", sarcastic_response: "#ef4444", seeking_validation: "#a855f7", committed_retry: "#06b6d4", off_topic: "#9ca3af" };
+const EXPRESSION_ORDER = ["neutral", "happy", "sad", "angry", "fearful", "disgusted", "surprised"];
 
 function ec(e: string) { return EC[e] || "#9ca3af"; }
 function ic(l: string) { return IC[l] || "#a78bfa"; }
@@ -242,9 +243,15 @@ export function LiveAnalyticsPanel({ mlimAnalysis, mlimAnalyzing, streamingLayer
             <span className="text-[8px] text-gray-600 font-mono">{(faceData.confidence * 100).toFixed(0)}%</span>
           </div>
           <div className="space-y-1">
-            {Object.entries(faceData.expressions).filter(([, v]) => v > 0.04).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([expr, val]) => (
-              <Bar key={expr} label={expr} value={val} color={ec(expr)} />
-            ))}
+            {EXPRESSION_ORDER.map((expr) => {
+              const val = faceData.expressions[expr] ?? 0;
+              const isDominant = expr === faceData.dominantExpression;
+              return (
+                <div key={expr} className={isDominant ? "rounded-md -mx-1 px-1 py-0.5 bg-white/5 border border-white/10" : ""}>
+                  <Bar label={expr} value={val} color={ec(expr)} />
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
