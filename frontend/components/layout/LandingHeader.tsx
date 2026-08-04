@@ -118,7 +118,7 @@ export function LandingHeader() {
             </Link>
             <Link href="/register" onClick={() => setMenuOpen(false)}>
               <button className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg font-sans text-sm font-semibold text-white bg-accent">
-                Start free session
+                Start session
                 <ArrowRight size={14} />
               </button>
             </Link>
