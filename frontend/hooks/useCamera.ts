@@ -80,26 +80,13 @@ export function useCamera() {
   }, [startCamera]);
 
   useEffect(() => {
-    const handleVisibility = () => {
-      if (document.hidden) suspendCamera(); else resumeCamera();
-    };
-    const handleBlur = () => suspendCamera();
-    const handleFocus = () => resumeCamera();
-
-    document.addEventListener("visibilitychange", handleVisibility);
-    window.addEventListener("blur", handleBlur);
-    window.addEventListener("focus", handleFocus);
-
     return () => {
-      document.removeEventListener("visibilitychange", handleVisibility);
-      window.removeEventListener("blur", handleBlur);
-      window.removeEventListener("focus", handleFocus);
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
       }
     };
-  }, [suspendCamera, resumeCamera]);
+  }, []);
 
-  return { videoRef, active, error, suspended, startCamera, stopCamera, suspendCamera, resumeCamera };
+  return { videoRef, streamRef, active, error, suspended, startCamera, stopCamera, suspendCamera, resumeCamera };
 }
