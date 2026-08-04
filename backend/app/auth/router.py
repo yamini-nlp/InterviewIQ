@@ -258,7 +258,16 @@ async def refresh(request: Request, response: Response):
     set_auth_cookies(response, new_access, new_refresh)
     return {"access_token": new_access}
 
-
+@router.get("/me")
+async def me(current_user: dict = Depends(get_current_user)):
+    return {
+        "user": {
+            "id": current_user["id"],
+            "email": current_user["email"],
+            "name": current_user["name"],
+        }
+    }
+    
 @router.post("/logout")
 async def logout(request: Request, response: Response):
     refresh_token = request.cookies.get(REFRESH_COOKIE)
