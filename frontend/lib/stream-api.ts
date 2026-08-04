@@ -1,4 +1,4 @@
-import { ensureAccessToken, authorizedFetch } from "@/lib/mlim-api";
+import { authorizedFetch } from "@/lib/mlim-api";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL;
 
@@ -18,12 +18,6 @@ export async function streamInterviewerResponse(
     clarificationPrompt?: string;
   }
 ): Promise<void> {
-  const token = await ensureAccessToken();
-  if (!token) {
-    callbacks.onError("Not authenticated");
-    return;
-  }
-
   const params = new URLSearchParams({
     question_index: String(questionIndex),
     interviewer_style: options?.interviewerStyle ?? "professional",
@@ -35,7 +29,7 @@ export async function streamInterviewerResponse(
 
   let response: Response;
   try {
-    response = await authorizedFetch(url, { method: "GET" }, token);
+    response = await authorizedFetch(url, { method: "GET" });
   } catch (e) {
     callbacks.onError("Network error connecting to stream");
     return;
