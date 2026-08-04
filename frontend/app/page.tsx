@@ -68,12 +68,6 @@ const faqs = [
   { q: "Do I need to create an account?", a: "Yes. Accounts keep your sessions, reports, and MLIM analytics isolated to you." },
 ];
 
-const expressions = [
-  { label: "neutral", color: "#e5e7eb" },
-  { label: "happy", color: "#10b981" },
-  { label: "surprised", color: "#06b6d4" },
-];
-
 function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: string }) {
   const [count, setCount] = useState(0);
   const ref = useRef<HTMLSpanElement>(null);
@@ -96,24 +90,6 @@ function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: str
   return <span ref={ref}>{count}{suffix}</span>;
 }
 
-function AvatarGlyph({ active }: { active: boolean }) {
-  return (
-    <div className="relative w-8 h-8 shrink-0">
-      <span
-        className="absolute inset-0 rounded-full border border-accent/40"
-        style={{ animation: active ? "avatar-pulse 2.2s ease-out infinite" : "none" }}
-      />
-      <svg viewBox="0 0 36 36" className="relative w-8 h-8">
-        <circle cx="18" cy="18" r="16" fill="rgba(108,99,255,0.14)" stroke="#8b85ff" strokeWidth="1" />
-        <circle cx="13" cy="16" r="1.6" fill="#a5a0ff" />
-        <circle cx="23" cy="16" r="1.6" fill="#a5a0ff" />
-        <path d="M12 22c2 2.4 10 2.4 12 0" stroke="#a5a0ff" strokeWidth="1.4" fill="none" strokeLinecap="round" />
-      </svg>
-      <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#10b981] border border-night-950" />
-    </div>
-  );
-}
-
 export default function Home() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [activeLayer, setActiveLayer] = useState(0);
@@ -128,137 +104,84 @@ export default function Home() {
       <LandingHeader />
 
       <section
-        className="relative min-h-[100dvh] pt-16 flex flex-col justify-center px-6 py-10 overflow-hidden"
+        className="relative min-h-[100dvh] pt-32 pb-20 flex flex-col items-center justify-center px-6 overflow-hidden"
         style={{
           backgroundImage: "radial-gradient(ellipse 900px 500px at 50% -10%, rgba(108,99,255,0.16), transparent 60%)",
         }}
       >
+        <div className="relative z-10 max-w-3xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 mb-7 px-4 py-1.5 rounded-full" style={{ background: "rgba(108,99,255,0.08)", border: "1px solid rgba(108,99,255,0.22)" }}>
+            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: "#a78bfa" }}>
+              Multi-Layer Intent Modeling
+            </span>
+          </div>
 
-          <h1 className="font-display font-medium tracking-tight leading-[0.95] text-white text-5xl mt-5">
-            InterviewIQ
+          <h1 className="font-display font-extrabold uppercase leading-[0.98] text-white text-[2.6rem] sm:text-6xl lg:text-[4.25rem] tracking-tight">
+            The answer <span style={{ color: "#8b85ff" }}>behind</span>
+            <br />
+            the answer.
           </h1>
 
-          <p className="font-display font-medium text-base text-accent-light mt-2.5 tracking-tight">
-            The answer behind the answer.
+          <p className="font-sans mt-6 max-w-xl mx-auto text-base leading-relaxed" style={{ color: "#9ca3af" }}>
+            Not just what you say &mdash; what you <span className="text-white">mean</span>. Every response runs through four layers of signal: emotional tone, pragmatic intent, goal drift, and fused intent, before your report is built.
           </p>
 
-          <p className="mt-4 max-w-lg mx-auto text-[0.95rem] leading-relaxed" style={{ color: "#c3c7d1" }}>
-            Not just what you say &mdash; what you <span className="text-white">mean</span>. Every answer runs through four layers of signal: emotional tone, pragmatic intent, and how your goals shift as the session goes on.
-          </p>
-
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link href="/register">
-              <button className="group inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-white text-sm transition-transform duration-200 hover:-translate-y-0.5 bg-accent">
+              <button
+                className="group inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-sans font-semibold text-white text-sm transition-all duration-200 hover:-translate-y-0.5 bg-accent"
+                style={{ boxShadow: "0 0 40px rgba(108,99,255,0.3), 0 4px 16px rgba(0,0,0,0.4)" }}
+              >
                 Start free session
                 <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-1" />
               </button>
             </Link>
             <Link
               href="/login"
-              className="inline-flex items-center px-5 py-2.5 rounded-lg font-medium text-sm transition-colors"
+              className="font-sans inline-flex items-center px-7 py-3.5 rounded-xl font-medium text-sm transition-colors"
               style={{ color: "#e5e7eb", border: "1px solid rgba(255,255,255,0.14)" }}
             >
               Sign in
             </Link>
           </div>
-
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-7 gap-y-2">
-            {[
-              { v: "4", l: "MLIM layers" }, { v: "8", l: "Intent labels" },
-              { v: "7", l: "Emotion axes" }, { v: "2", l: "Groq models" },
-            ].map((s) => (
-              <div key={s.l} className="flex items-baseline gap-1.5">
-                <span className="font-display text-base font-bold text-white">{s.v}</span>
-                <span className="text-[9.5px] font-mono uppercase tracking-[0.12em]" style={{ color: "#9ca3af" }}>{s.l}</span>
-              </div>
-            ))}
-          </div>
-
-          <p className="mt-4 text-[9.5px] font-mono uppercase tracking-[0.16em]" style={{ color: "#6b7280" }}>
-            Built on LLaMA 3.3 70B &middot; Whisper Large v3 &middot; face-api.js &middot; MongoDB Atlas
-          </p>
         </div>
 
-        <div className="relative z-10 max-w-4xl w-full mx-auto mt-8">
-          <div className="rounded-xl overflow-hidden border border-white/10 bg-[#0c0d11] shadow-[0_40px_100px_-40px_rgba(0,0,0,0.8)]">
-            <div className="flex items-center gap-2 px-4 py-2 border-b border-white/8 bg-white/[0.02]">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-white/15" />
-                <span className="w-2.5 h-2.5 rounded-full bg-white/15" />
-                <span className="w-2.5 h-2.5 rounded-full bg-white/15" />
+        <div className="relative z-10 mt-16 max-w-4xl w-full mx-auto grid sm:grid-cols-3 gap-4">
+          {[
+            { icon: Activity, label: "Affective Signal", desc: "Valence, arousal, and masking read live." },
+            { icon: GitBranch, label: "Goal-State Tracking", desc: "HMM belief updated across the full session." },
+            { icon: Target, label: "Intent Fusion", desc: "Entropy-scored label, auto-clarified." },
+          ].map((f) => (
+            <div
+              key={f.label}
+              className="rounded-2xl p-5 text-left transition-all duration-200 hover:-translate-y-0.5"
+              style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}
+            >
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-4" style={{ background: "rgba(108,99,255,0.12)", border: "1px solid rgba(108,99,255,0.22)" }}>
+                <f.icon size={15} style={{ color: "#8b85ff" }} />
               </div>
-              <div className="flex-1 flex justify-center">
-                <span className="text-[10px] font-mono px-3 py-0.5 rounded-md bg-white/[0.03] border border-white/5" style={{ color: "#6b7280" }}>
-                  interviewiq.app/session/04
-                </span>
-              </div>
+              <h3 className="font-display font-semibold text-white text-sm mb-1.5">{f.label}</h3>
+              <p className="font-sans text-xs leading-relaxed" style={{ color: "#9ca3af" }}>{f.desc}</p>
             </div>
-
-            <div className="p-5 sm:p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <AvatarGlyph active />
-                  <div>
-                    <span className="block text-[12px] font-semibold text-white">AI Interviewer</span>
-                    <span className="block text-[10px] font-mono" style={{ color: "#6b7280" }}>session_04 &middot; live</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#f87171] animate-pulse" />
-                  <span className="text-[9px] font-mono uppercase tracking-widest" style={{ color: "#6b7280" }}>REC</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 mb-4 pb-3 border-b border-dashed border-white/10">
-                <Mic size={12} style={{ color: "#6b7280" }} />
-                <span className="text-[9px] font-mono uppercase tracking-widest" style={{ color: "#6b7280" }}>Detected expression</span>
-                <div className="flex items-center gap-3 ml-auto">
-                  {expressions.map((e) => (
-                    <span key={e.label} className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: e.color, opacity: e.label === "neutral" ? 1 : 0.4 }} />
-                      <span className="text-[9px] font-mono" style={{ color: "#9ca3af" }}>{e.label}</span>
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-x-8 gap-y-3.5 mb-4">
-                {mlimLayers.map((layer, i) => (
-                  <div key={layer.id}>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[10.5px] font-mono uppercase tracking-widest" style={{ color: activeLayer === i ? layer.color : "#6b7280" }}>{layer.label}</span>
-                      <span className="text-[9.5px] font-mono" style={{ color: "#6b7280" }}>{layer.name}</span>
-                    </div>
-                    <div className="flex items-end gap-[3px] h-5">
-                      {Array.from({ length: 26 }).map((_, j) => (
-                        <span key={j} className="w-[3px] rounded-full flex-shrink-0" style={{
-                          height: "100%",
-                          background: layer.color,
-                          opacity: activeLayer === i ? 0.55 + (j % 5) * 0.09 : 0.18,
-                          animation: `signal-pulse ${0.8 + (j % 4) * 0.15}s ease-in-out ${j * 0.04}s infinite`,
-                        }} />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="rounded-lg px-4 py-2.5 flex items-center justify-between bg-accent/[0.07] border border-accent/[0.18]">
-                <span className="text-xs" style={{ color: "#c3c7d1" }}>Detected intent</span>
-                <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ color: intents[0].color, background: `${intents[0].color}1a` }}>
-                  {intents[0].label} &middot; {intents[0].pct}%
-                </span>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
 
-        <style jsx>{`
-          @keyframes avatar-pulse {
-            0% { transform: scale(1); opacity: 0.6; }
-            100% { transform: scale(1.6); opacity: 0; }
-          }
-        `}</style>
+        <div className="relative z-10 mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+          {[
+            { v: "4", l: "MLIM layers" }, { v: "8", l: "Intent labels" },
+            { v: "7", l: "Emotion axes" }, { v: "2", l: "Groq models" },
+          ].map((s) => (
+            <div key={s.l} className="flex items-baseline gap-1.5">
+              <span className="font-display text-base font-bold text-white">{s.v}</span>
+              <span className="font-mono text-[9.5px] uppercase tracking-[0.12em]" style={{ color: "#9ca3af" }}>{s.l}</span>
+            </div>
+          ))}
+        </div>
+
+        <p className="relative z-10 mt-6 font-mono text-[9.5px] uppercase tracking-[0.16em]" style={{ color: "#6b7280" }}>
+          Built on LLaMA 3.3 70B &middot; Whisper Large v3 &middot; face-api.js &middot; MongoDB Atlas
+        </p>
       </section>
 
       <section id="architecture" className="py-28 px-6 max-w-7xl mx-auto">
@@ -266,7 +189,7 @@ export default function Home() {
           <div className="lg:sticky lg:top-28 h-full flex flex-col justify-between">
             <div>
               <span className="text-[10px] font-mono uppercase tracking-[0.2em] block mb-5" style={{ color: "#6c63ff" }}>Architecture</span>
-              <h2 className="font-bold text-white mb-5 leading-tight" style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(1.8rem, 3vw, 2.5rem)" }}>
+              <h2 className="font-display font-bold text-white mb-5 leading-tight" style={{ fontSize: "clamp(1.8rem, 3vw, 2.5rem)" }}>
                 <span className="block">The 4-Layer</span>
                 <span className="block" style={{ color: "#6c63ff" }}>Intent Pipeline</span>
               </h2>
@@ -374,7 +297,7 @@ export default function Home() {
       <section id="capabilities" className="py-28 px-6 max-w-7xl mx-auto">
         <div className="max-w-2xl mb-16">
           <span className="text-[10px] font-mono uppercase tracking-[0.2em] block mb-5" style={{ color: "#6c63ff" }}>Capabilities</span>
-          <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(1.8rem, 3vw, 2.5rem)" }} className="font-bold text-white mb-5 leading-tight">
+          <h2 style={{ fontSize: "clamp(1.8rem, 3vw, 2.5rem)" }} className="font-display font-bold text-white mb-5 leading-tight">
             Every layer of intelligence,<br />running on your answer.
           </h2>
           <p style={{ color: "#9ca3af", fontSize: "0.95rem" }} className="leading-relaxed">
@@ -390,7 +313,7 @@ export default function Home() {
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-5" style={{ background: `${cap.accent}15`, border: `1px solid ${cap.accent}20` }}>
                   <cap.icon size={15} style={{ color: cap.accent }} />
                 </div>
-                <h3 className="font-semibold text-white mb-2 text-sm" style={{ fontFamily: "'Syne', sans-serif" }}>{cap.title}</h3>
+                <h3 className="font-display font-semibold text-white mb-2 text-sm">{cap.title}</h3>
                 <p className="text-xs leading-relaxed" style={{ color: "#9ca3af" }}>{cap.desc}</p>
               </div>
             </div>
@@ -405,7 +328,7 @@ export default function Home() {
       <section id="process" className="py-28 px-6 max-w-5xl mx-auto">
         <div className="text-center mb-16">
           <span className="text-[10px] font-mono uppercase tracking-[0.2em] block mb-5" style={{ color: "#6c63ff" }}>Process</span>
-          <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(1.8rem, 3vw, 2.5rem)" }} className="font-bold text-white leading-tight">
+          <h2 style={{ fontSize: "clamp(1.8rem, 3vw, 2.5rem)" }} className="font-display font-bold text-white leading-tight">
             From job description<br />to full assessment report.
           </h2>
         </div>
@@ -417,7 +340,7 @@ export default function Home() {
                 {step.n}
               </div>
               <div>
-                <h3 className="font-semibold text-white text-sm mb-1.5" style={{ fontFamily: "'Syne', sans-serif" }}>{step.title}</h3>
+                <h3 className="font-display font-semibold text-white text-sm mb-1.5">{step.title}</h3>
                 <p className="text-xs leading-relaxed" style={{ color: "#9ca3af" }}>{step.desc}</p>
               </div>
             </div>
@@ -434,7 +357,7 @@ export default function Home() {
             { target: 2, suffix: "", label: "Groq Models", sub: "8B fast · 70B reasoning" },
           ].map((m) => (
             <div key={m.label}>
-              <div style={{ fontFamily: "'Syne', sans-serif", color: "#6c63ff" }} className="font-extrabold text-5xl leading-none mb-2">
+              <div style={{ color: "#6c63ff" }} className="font-display font-extrabold text-5xl leading-none mb-2">
                 <AnimatedCounter target={m.target} suffix={m.suffix} />
               </div>
               <div className="font-semibold text-white text-sm mb-1">{m.label}</div>
@@ -447,7 +370,7 @@ export default function Home() {
       <section id="faq" className="py-28 px-6 max-w-3xl mx-auto">
         <div className="text-center mb-14">
           <span className="text-[10px] font-mono uppercase tracking-[0.2em] block mb-5" style={{ color: "#6c63ff" }}>FAQ</span>
-          <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(1.8rem, 3vw, 2.2rem)" }} className="font-bold text-white">Common questions</h2>
+          <h2 style={{ fontSize: "clamp(1.8rem, 3vw, 2.2rem)" }} className="font-display font-bold text-white">Common questions</h2>
         </div>
         <div className="space-y-2">
           {faqs.map((faq, i) => (
@@ -474,7 +397,7 @@ export default function Home() {
               <span className="w-1 h-1 rounded-full bg-[#6c63ff] animate-pulse" />
               <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "#a78bfa" }}>Free · No credit card required</span>
             </div>
-            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(1.6rem, 3vw, 2.2rem)" }} className="font-bold text-white mb-4 leading-tight">
+            <h2 style={{ fontSize: "clamp(1.6rem, 3vw, 2.2rem)" }} className="font-display font-bold text-white mb-4 leading-tight">
               Ready to see your intent profile?
             </h2>
             <p className="mb-10 text-sm leading-relaxed max-w-lg mx-auto" style={{ color: "#9ca3af" }}>
