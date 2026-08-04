@@ -181,9 +181,6 @@ export default function Home() {
           ))}
         </div>
 
-        <p className="relative z-10 mt-6 font-mono text-[9.5px] uppercase tracking-[0.16em]" style={{ color: "#6b7280" }}>
-          Built on LLaMA 3.3 70B &middot; Whisper Large v3 &middot; face-api.js &middot; MongoDB Atlas
-        </p>
       </section>
 
       <section id="architecture" className="py-28 px-6 max-w-7xl mx-auto">
