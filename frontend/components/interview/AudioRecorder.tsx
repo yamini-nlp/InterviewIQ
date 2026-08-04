@@ -21,6 +21,8 @@ export function AudioRecorder({ onTranscript, disabled, onRecordingChange, strea
     audioBlob,
     error,
     suspended,
+    liveTranscript,
+    speechSupported,
     startRecording,
     stopRecording,
     retry,
@@ -54,6 +56,12 @@ export function AudioRecorder({ onTranscript, disabled, onRecordingChange, strea
     if (disabled && isRecording) stopRecording();
   }, [disabled, isRecording, stopRecording]);
 
+  useEffect(() => {
+    if (isRecording && liveTranscript.trim()) {
+      onTranscript(liveTranscript);
+    }
+  }, [isRecording, liveTranscript, onTranscript]);
+
   const runTranscription = useCallback((blob: Blob) => {
     let cancelled = false;
     lastBlobRef.current = blob;
@@ -61,23 +69,27 @@ export function AudioRecorder({ onTranscript, disabled, onRecordingChange, strea
     setTranscribing(true);
     transcribeAudio(blob)
       .then(({ transcript }) => {
-        if (!cancelled) onTranscript(transcript);
+        if (!cancelled && transcript.trim()) onTranscript(transcript);
       })
       .catch(() => {
         if (!cancelled) {
-          setUploadFailed(true);
-          toast({
-            title: "Transcription failed",
-            description: "We couldn't upload your recording. Check your connection and retry.",
-            variant: "error",
-          });
+          if (liveTranscript.trim()) {
+            onTranscript(liveTranscript);
+          } else {
+            setUploadFailed(true);
+            toast({
+              title: "Transcription failed",
+              description: "We couldn't upload your recording. Check your connection and retry.",
+              variant: "error",
+            });
+          }
         }
       })
       .finally(() => {
         if (!cancelled) setTranscribing(false);
       });
     return () => { cancelled = true; };
-  }, [onTranscript, toast]);
+  }, [onTranscript, toast, liveTranscript]);
 
   useEffect(() => {
     if (!audioBlob || audioBlob === processedBlobRef.current) return;
@@ -165,29 +177,39 @@ export function AudioRecorder({ onTranscript, disabled, onRecordingChange, strea
   }
 
   return (
-    <div className="flex items-center gap-3">
-      <Button
-        variant={isRecording ? "danger" : "outline"}
-        size="sm"
-        onClick={handleClick}
-        disabled={disabled}
-        className="active:scale-95"
-        aria-pressed={isRecording}
-      >
-        {isRecording ? <><MicOff size={14} /> Stop Recording</> : <><Mic size={14} /> Record Answer</>}
-      </Button>
-      {isRecording && !suspended && (
-        <canvas
-          ref={canvasRef}
-          width={96}
-          height={28}
-          className="rounded-md bg-black/20"
-          role="img"
-          aria-label="Microphone audio level"
-        />
-      )}
-      {isRecording && suspended && (
-        <span className="text-xs text-neutral-500">Paused (tab inactive)</span>
+    <div className="flex flex-col gap-1.5 w-full">
+      <div className="flex items-center gap-3">
+        <Button
+          variant={isRecording ? "danger" : "outline"}
+          size="sm"
+          onClick={handleClick}
+          disabled={disabled}
+          className="active:scale-95"
+          aria-pressed={isRecording}
+        >
+          {isRecording ? <><MicOff size={14} /> Stop Recording</> : <><Mic size={14} /> Record Answer</>}
+        </Button>
+        {isRecording && !suspended && (
+          <canvas
+            ref={canvasRef}
+            width={96}
+            height={28}
+            className="rounded-md bg-black/20"
+            role="img"
+            aria-label="Microphone audio level"
+          />
+        )}
+        {isRecording && suspended && (
+          <span className="text-xs text-neutral-500">Paused (tab inactive)</span>
+        )}
+        {isRecording && !speechSupported && (
+          <span className="text-[10px] text-neutral-500">Live captions unavailable in this browser</span>
+        )}
+      </div>
+      {isRecording && !suspended && liveTranscript && (
+        <div className="bg-neutral-100 rounded-lg px-3 py-1.5 border border-neutral-200 max-h-16 overflow-y-auto">
+          <p className="text-xs text-neutral-700" role="status" aria-live="polite">{liveTranscript}</p>
+        </div>
       )}
     </div>
   );
