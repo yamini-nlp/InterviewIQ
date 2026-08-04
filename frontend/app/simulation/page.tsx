@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/hooks/useToast";
 import { useMLIM } from "@/hooks/useMLIM";
 import { useCheatingDetection } from "@/hooks/useCheatingDetection";
-import { Loader2, ChevronRight, AlertTriangle, Send, Keyboard, Mic, Volume2 } from "lucide-react";
+import { Loader2, ChevronRight, AlertTriangle, Send, Keyboard, Mic, Volume2, SkipForward } from "lucide-react";
 
 interface Message {
   role: "ai" | "user";
@@ -41,11 +41,11 @@ export default function Simulation() {
   const [speakEnabled, setSpeakEnabled] = useState(true);
   const [faceData, setFaceData] = useState<any>(null);
   const [timerActive, setTimerActive] = useState(false);
-  const [cameraSuspended, setCameraSuspended] = useState(false);
 
   const audioStreamRef = useRef<MediaStream | null>(null);
+  const videoStreamRef = useRef<MediaStream | null>(null);
   const mlim = useMLIM();
-  const cheating = useCheatingDetection(true, audioStreamRef);
+  const cheating = useCheatingDetection(true, audioStreamRef, videoStreamRef);
 
   useEffect(() => {
     const s = loadSession();
@@ -61,20 +61,6 @@ export default function Simulation() {
       setTimerActive(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    const handleVisibility = () => setCameraSuspended(document.hidden);
-    const handleBlur = () => setCameraSuspended(true);
-    const handleFocus = () => setCameraSuspended(false);
-    document.addEventListener("visibilitychange", handleVisibility);
-    window.addEventListener("blur", handleBlur);
-    window.addEventListener("focus", handleFocus);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibility);
-      window.removeEventListener("blur", handleBlur);
-      window.removeEventListener("focus", handleFocus);
-    };
   }, []);
 
   const handleAvatarSpeakEnd = useCallback(() => {
@@ -99,7 +85,7 @@ export default function Simulation() {
     setAnswer("");
 
     try {
-      const mlimResult = await mlim.analyze({
+      const mlimPromise = mlim.analyze({
         sessionId: session.session_id,
         questionId: current.id,
         questionText: current.text,
@@ -108,9 +94,14 @@ export default function Simulation() {
         faceSnapshot: faceData,
       });
 
-      const shouldClarify = mlimResult?.ifl?.should_solicit_clarification ?? false;
-      const clarificationPrompt = mlimResult?.ifl?.clarification_prompt ?? null;
-      const mlimModifier = mlimResult?.ifl?.intent_aware_response_modifier ?? "";
+      const respondPromise = simulateRespond({
+        session_id: session.session_id,
+        question_text: current.text,
+        answer_text: answerToSubmit,
+        interviewer_style: "professional",
+      });
+
+      const [mlimResult, { response }] = await Promise.all([mlimPromise, respondPromise]);
 
       if (!mlimResult) {
         toast({
@@ -119,15 +110,6 @@ export default function Simulation() {
           variant: "warning",
         });
       }
-
-      const { response } = await simulateRespond({
-        session_id: session.session_id,
-        question_text: current.text,
-        answer_text: answerToSubmit,
-        interviewer_style: "professional",
-        mlim_modifier: mlimModifier,
-        clarification_prompt: shouldClarify && clarificationPrompt ? clarificationPrompt : undefined,
-      });
 
       setMessages((m) => [...m, { role: "ai", text: response }]);
       setAnswered(true);
@@ -149,6 +131,7 @@ export default function Simulation() {
 
   const handleNext = useCallback(async () => {
     if (!session) return;
+    setAvatarSpeaking(false);
     const questions: Question[] = session.questions;
     const isLast = currentIndex === questions.length - 1;
     if (isLast) {
@@ -175,6 +158,14 @@ export default function Simulation() {
       speakText(next.text);
     }
   }, [session, currentIndex, router, speakText, cheating, toast]);
+
+  const handleSkip = useCallback(() => {
+    if (answered || loading || !session) return;
+    setTimerActive(false);
+    setMessages((m) => [...m, { role: "user", text: "(Question skipped)" }]);
+    setAnswer("");
+    handleNext();
+  }, [answered, loading, session, handleNext]);
 
   const handleTimeout = useCallback(() => {
     if (!answered && answer.trim()) {
@@ -231,7 +222,8 @@ export default function Simulation() {
                 mlimAnalysis={mlim.latestAnalysis}
                 mlimAnalyzing={mlim.isAnalyzing}
                 onFaceData={setFaceData}
-                suspended={cameraSuspended}
+                suspended={cheating.suspended}
+                streamRef={videoStreamRef}
               />
 
               <div className="absolute top-3 right-3 w-36 h-28 rounded-xl overflow-hidden border border-neutral-200 shadow-2xl bg-neutral-100 z-20">
@@ -287,6 +279,15 @@ export default function Simulation() {
                     </button>
                   </div>
                   <div className="flex items-center gap-2">
+                    {!answered && (
+                      <button
+                        onClick={handleSkip}
+                        disabled={loading}
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-mono border border-neutral-200 text-neutral-500 hover:text-neutral-700 transition-all active:scale-95 disabled:opacity-50"
+                      >
+                        <SkipForward size={10} /> SKIP
+                      </button>
+                    )}
                     {timerActive && !answered && (
                       <div className="w-28">
                         <TimerBar key={timerKey} duration={120} onTimeout={handleTimeout} />
@@ -326,17 +327,12 @@ export default function Simulation() {
                     ) : (
                       <Button
                         onClick={handleNext}
-                        disabled={generatingReport || avatarSpeaking}
+                        disabled={generatingReport}
                         variant="secondary"
                         className="flex-shrink-0 active:scale-95"
                       >
                         {generatingReport ? (
                           <Loader2 size={14} className="animate-spin" />
-                        ) : avatarSpeaking ? (
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                            <span className="text-xs">Speaking</span>
-                          </div>
                         ) : isLast ? "Report" : <><ChevronRight size={14} /> Next</>}
                       </Button>
                     )}
@@ -366,18 +362,16 @@ export default function Simulation() {
                     ) : (
                       <Button
                         onClick={handleNext}
-                        disabled={generatingReport || avatarSpeaking}
+                        disabled={generatingReport}
                         variant="secondary"
                         className="flex-1 justify-center active:scale-95"
                       >
                         {generatingReport ? (
                           <><Loader2 size={14} className="animate-spin" /> Generating...</>
-                        ) : avatarSpeaking ? (
-                          <><div className="w-2 h-2 rounded-full bg-white animate-pulse" /> Speaking...</>
                         ) : isLast ? "View Report" : <><ChevronRight size={14} /> Next Question</>}
                       </Button>
                     )}
-                    {answer && !answered && (
+                    {answer && !answered && !isRecording && (
                       <div className="flex-1 bg-neutral-100 rounded-xl px-3 py-2 border border-neutral-200">
                         <p className="text-xs text-neutral-600 line-clamp-2">{answer}</p>
                       </div>
@@ -399,7 +393,7 @@ export default function Simulation() {
               tabSwitches={cheatingData.tab_switches}
               windowBlurs={cheatingData.window_blurs}
               copyPastes={cheatingData.copy_pastes}
-              suspended={cameraSuspended}
+              suspended={cheating.suspended}
             />
           </div>
         </div>
