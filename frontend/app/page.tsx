@@ -199,7 +199,7 @@ export default function Home() {
                 className="group inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-sans font-semibold text-white text-sm transition-all duration-200 hover:-translate-y-0.5 bg-accent"
                 style={{ boxShadow: "0 0 40px rgba(108,99,255,0.3), 0 4px 16px rgba(0,0,0,0.4)" }}
               >
-                Start free session
+                Start session
                 <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-1" />
               </button>
             </Link>
