@@ -133,13 +133,6 @@ export default function Home() {
           backgroundImage: "radial-gradient(ellipse 900px 500px at 50% -10%, rgba(108,99,255,0.16), transparent 60%)",
         }}
       >
-        <div className="relative z-10 max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/[0.03]">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent" style={{ animation: "avatar-pulse 2.2s ease-out infinite" }} />
-            <span className="text-[10.5px] font-mono uppercase tracking-[0.14em]" style={{ color: "#d1d5db" }}>
-              Multi-Layer Intent Modeling
-            </span>
-          </div>
 
           <h1 className="font-display font-medium tracking-tight leading-[0.95] text-white text-5xl mt-5">
             InterviewIQ
