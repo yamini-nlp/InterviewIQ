@@ -118,10 +118,12 @@ export default function Home() {
           </div>
 
           <h1 className="font-display font-extrabold uppercase leading-[0.98] text-white text-[2.6rem] sm:text-6xl lg:text-[4.25rem] tracking-tight">
-            The answer <span style={{ color: "#8b85ff" }}>behind</span>
-            <br />
-            the answer.
+            InterviewIQ
           </h1>
+
+          <p className="font-display font-medium mt-4 text-lg sm:text-xl tracking-tight" style={{ color: "#8b85ff" }}>
+            The answer behind the answer.
+          </p>
 
           <p className="font-sans mt-6 max-w-xl mx-auto text-base leading-relaxed" style={{ color: "#9ca3af" }}>
             Not just what you say &mdash; what you <span className="text-white">mean</span>. Every response runs through four layers of signal: emotional tone, pragmatic intent, goal drift, and fused intent, before your report is built.
