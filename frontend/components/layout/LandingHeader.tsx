@@ -76,7 +76,7 @@ export function LandingHeader() {
           </Link>
           <Link href="/register">
             <button className="group inline-flex items-center gap-1.5 px-4 py-2 rounded-lg font-sans text-[13px] font-semibold text-white bg-accent hover:opacity-90 transition-opacity">
-              Start free session
+              Start session
               <ArrowRight size={13} className="transition-transform duration-200 group-hover:translate-x-0.5" />
             </button>
           </Link>
