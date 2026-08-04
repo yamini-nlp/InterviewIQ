@@ -1,4 +1,4 @@
-import { getAccessToken, refreshAccessToken } from "@/lib/auth";
+import { refreshAccessToken } from "@/lib/auth";
 import {
   MLIMAnalyzeRequest,
   MLIMAnalysis,
@@ -14,19 +14,7 @@ const BASE = process.env.NEXT_PUBLIC_API_URL;
 export type MLIMLayerName = "asl" | "pel" | "gstl" | "ifl";
 export type MLIMLayerData = ASLOutput | PELOutput | GSTLOutput | IFLOutput;
 
-export async function ensureAccessToken(): Promise<string | null> {
-  let token = getAccessToken();
-  if (!token) {
-    token = await refreshAccessToken();
-  }
-  return token;
-}
-
-export async function authorizedFetch(
-  url: string,
-  init: RequestInit,
-  token: string | null
-): Promise<Response> {
+export async function authorizedFetch(url: string, init: RequestInit): Promise<Response> {
   const withCredentials = (): RequestInit => ({
     ...init,
     credentials: "include",
@@ -45,11 +33,9 @@ export async function authorizedFetch(
 }
 
 async function mlimGetFetch<T>(path: string): Promise<T> {
-  const token = await ensureAccessToken();
-
   let res: Response;
   try {
-    res = await authorizedFetch(`${BASE}${path}`, { method: "GET" }, token);
+    res = await authorizedFetch(`${BASE}${path}`, { method: "GET" });
   } catch (e) {
     throw new Error("Network error connecting to MLIM service");
   }
@@ -73,19 +59,13 @@ export async function getMLIMSessionSummary(sessionId: string): Promise<MLIMSess
 }
 
 async function mlimFetch<T>(path: string, body: unknown): Promise<T> {
-  const token = await ensureAccessToken();
-
   let res: Response;
   try {
-    res = await authorizedFetch(
-      `${BASE}${path}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      },
-      token
-    );
+    res = await authorizedFetch(`${BASE}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
   } catch (e) {
     throw new Error("Network error connecting to MLIM service");
   }
@@ -108,26 +88,16 @@ export async function streamMlimAnalysis(
   onError: (message: string) => void,
   signal?: AbortSignal
 ): Promise<void> {
-  const token = await ensureAccessToken();
-  if (!token) {
-    onError("Not authenticated");
-    return;
-  }
-
   const url = `${BASE}/api/mlim/analyze/stream`;
 
   let response: Response;
   try {
-    response = await authorizedFetch(
-      url,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(request),
-        signal,
-      },
-      token
-    );
+    response = await authorizedFetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+      signal,
+    });
   } catch (e) {
     if (signal?.aborted) return;
     onError("Network error connecting to MLIM stream");
@@ -190,7 +160,6 @@ export async function streamMlimAnalysis(
     try {
       reader.releaseLock();
     } catch {
-      /* noop */
     }
   }
 }
