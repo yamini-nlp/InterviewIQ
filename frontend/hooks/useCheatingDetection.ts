@@ -8,10 +8,15 @@ export interface CheatingEvent {
   metadata?: Record<string, any>;
 }
 
-export function useCheatingDetection(active: boolean, micStreamRef?: React.MutableRefObject<MediaStream | null>) {
+export function useCheatingDetection(
+  active: boolean,
+  micStreamRef?: React.MutableRefObject<MediaStream | null>,
+  videoStreamRef?: React.MutableRefObject<MediaStream | null>
+) {
   const [events, setEvents] = useState<CheatingEvent[]>([]);
   const [showWarning, setShowWarning] = useState(false);
   const [warningMessage, setWarningMessage] = useState("");
+  const [suspended, setSuspended] = useState(false);
   const countsRef = useRef<Record<string, number>>({});
   const warningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const devtoolsRef = useRef(false);
@@ -31,9 +36,9 @@ export function useCheatingDetection(active: boolean, micStreamRef?: React.Mutab
     setEvents((prev) => [...prev, ev]);
     pendingEventsRef.current.push(ev);
     const messages: Record<string, string> = {
-      tab_switch: `⚠ Tab switch detected (${countsRef.current[type]}x) — camera & mic suspended`,
+      tab_switch: `⚠ Tab switch flagged (${countsRef.current[type]}x) — camera & mic disabled`,
       copy_paste: `⚠ Copy/paste detected (${countsRef.current[type]}x)`,
-      window_blur: `⚠ Window lost focus (${countsRef.current[type]}x)`,
+      window_blur: `⚠ Window lost focus (${countsRef.current[type]}x) — camera & mic disabled`,
       right_click: `⚠ Right-click disabled during interview`,
       devtools_open: `⚠ DevTools detected — flagged`,
       inactivity: `⚠ Inactivity detected — are you still there?`,
@@ -44,17 +49,25 @@ export function useCheatingDetection(active: boolean, micStreamRef?: React.Mutab
     triggerWarning(messages[type] || `⚠ Suspicious activity detected`);
   }, [triggerWarning]);
 
-  const suspendMic = useCallback(() => {
+  const suspendMedia = useCallback(() => {
     if (micStreamRef?.current) {
       micStreamRef.current.getAudioTracks().forEach((t) => { t.enabled = false; });
     }
-  }, [micStreamRef]);
+    if (videoStreamRef?.current) {
+      videoStreamRef.current.getVideoTracks().forEach((t) => { t.enabled = false; });
+    }
+    setSuspended(true);
+  }, [micStreamRef, videoStreamRef]);
 
-  const resumeMic = useCallback(() => {
+  const resumeMedia = useCallback(() => {
     if (micStreamRef?.current) {
       micStreamRef.current.getAudioTracks().forEach((t) => { t.enabled = true; });
     }
-  }, [micStreamRef]);
+    if (videoStreamRef?.current) {
+      videoStreamRef.current.getVideoTracks().forEach((t) => { t.enabled = true; });
+    }
+    setSuspended(false);
+  }, [micStreamRef, videoStreamRef]);
 
   const resetInactivityTimer = useCallback(() => {
     if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
@@ -69,16 +82,16 @@ export function useCheatingDetection(active: boolean, micStreamRef?: React.Mutab
     const onVisibilityChange = () => {
       if (document.hidden) {
         recordEvent("tab_switch");
-        suspendMic();
+        suspendMedia();
       } else {
-        resumeMic();
+        resumeMedia();
       }
     };
     const onBlur = () => {
       recordEvent("window_blur");
-      suspendMic();
+      suspendMedia();
     };
-    const onFocus = () => resumeMic();
+    const onFocus = () => resumeMedia();
     const onPaste = (e: ClipboardEvent) => {
       const text = e.clipboardData?.getData("text") || "";
       if (text.length > 20) recordEvent("copy_paste", { textLength: text.length });
@@ -119,7 +132,7 @@ export function useCheatingDetection(active: boolean, micStreamRef?: React.Mutab
       document.removeEventListener("mousemove", onActivity);
       document.removeEventListener("keydown", onActivity);
     };
-  }, [active, recordEvent, suspendMic, resumeMic, resetInactivityTimer]);
+  }, [active, recordEvent, suspendMedia, resumeMedia, resetInactivityTimer]);
 
   useEffect(() => {
     return () => { if (warningTimerRef.current) clearTimeout(warningTimerRef.current); };
@@ -152,5 +165,5 @@ export function useCheatingDetection(active: boolean, micStreamRef?: React.Mutab
     integrity_score: Math.max(0, 100 - (events.length * 7)),
   }), [events]);
 
-  return { events, showWarning, warningMessage, getSummary, flushEvents };
+  return { events, showWarning, warningMessage, suspended, getSummary, flushEvents };
 }
