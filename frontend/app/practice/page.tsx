@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/hooks/useToast";
 import { useMLIM } from "@/hooks/useMLIM";
 import { useCheatingDetection } from "@/hooks/useCheatingDetection";
-import { ChevronRight, AlertTriangle, Keyboard, Mic, Volume2, VolumeX } from "lucide-react";
+import { ChevronRight, AlertTriangle, Keyboard, Mic, Volume2, VolumeX, SkipForward } from "lucide-react";
 
 type InputMode = "text" | "voice";
 
@@ -36,12 +36,13 @@ export default function Practice() {
   const [avatarText, setAvatarText] = useState("");
   const [ttsEnabled, setTtsEnabled] = useState(true);
   const [faceData, setFaceData] = useState<FaceDetectionData | null>(null);
-  const [suspended, setSuspended] = useState(false);
+  const [skipped, setSkipped] = useState(false);
 
   const micStreamRef = useRef<MediaStream | null>(null);
+  const videoStreamRef = useRef<MediaStream | null>(null);
   const lastAnswerRef = useRef("");
   const mlim = useMLIM();
-  const cheating = useCheatingDetection(true, micStreamRef);
+  const cheating = useCheatingDetection(true, micStreamRef, videoStreamRef);
 
   useEffect(() => {
     const s = loadSession();
@@ -51,21 +52,6 @@ export default function Practice() {
     const intro = `Welcome. Let's begin your ${s.job_role} practice session.\n\n${q}`;
     if (ttsEnabled) { setAvatarText(intro); setAvatarSpeaking(true); }
     else setTimerActive(true);
-  }, []);
-
-  useEffect(() => {
-    const onHide = () => setSuspended(true);
-    const onShow = () => setSuspended(false);
-    const onBlur = () => setSuspended(true);
-    const onFocus = () => setSuspended(false);
-    document.addEventListener("visibilitychange", () => { if (document.hidden) onHide(); else onShow(); });
-    window.addEventListener("blur", onBlur);
-    window.addEventListener("focus", onFocus);
-    return () => {
-      document.removeEventListener("visibilitychange", onHide);
-      window.removeEventListener("blur", onBlur);
-      window.removeEventListener("focus", onFocus);
-    };
   }, []);
 
   const speak = useCallback((text: string) => {
@@ -91,7 +77,7 @@ export default function Practice() {
     try {
       const [fb, mlimResult] = await Promise.all([
         evaluateAnswer({ session_id: session.session_id, question_id: current.id, question_text: current.text, question_category: current.category, question_difficulty: current.difficulty, answer_text: ans, job_role: session.job_role }),
-        mlim.analyze({ sessionId: session.session_id, questionId: current.id, questionText: current.text, answerText: ans, jobRole: session.job_role }),
+        mlim.analyze({ sessionId: session.session_id, questionId: current.id, questionText: current.text, answerText: ans, jobRole: session.job_role, faceSnapshot: faceData }),
       ]);
       setFeedback(fb);
       if (!mlimResult) {
@@ -111,7 +97,7 @@ export default function Practice() {
     } finally {
       setLoading(false);
     }
-  }, [answer, loading, session, currentIndex, mlim, speak, toast]);
+  }, [answer, loading, session, currentIndex, mlim, speak, toast, faceData]);
 
   const retryFeedback = useCallback(() => {
     handleSubmit(lastAnswerRef.current);
@@ -119,6 +105,7 @@ export default function Practice() {
 
   const handleNext = useCallback(async () => {
     if (!session) return;
+    setAvatarSpeaking(false);
     const questions: Question[] = session.questions;
     const isLast = currentIndex === questions.length - 1;
     if (isLast) {
@@ -135,11 +122,18 @@ export default function Practice() {
       setAnswer("");
       setFeedback(null);
       setFeedbackError(null);
+      setSkipped(false);
       setTimerKey((k) => k + 1);
       setTimerActive(false);
       speak(next.text);
     }
   }, [session, currentIndex, router, speak, toast]);
+
+  const handleSkip = useCallback(() => {
+    if (feedback || loading || !session) return;
+    setTimerActive(false);
+    setSkipped(true);
+  }, [feedback, loading, session]);
 
   const handleTimeout = useCallback(() => {
     if (!feedback && answer.trim()) handleSubmit();
@@ -167,12 +161,11 @@ export default function Practice() {
         </div>
       )}
 
-      {suspended && (
+      {cheating.suspended && (
         <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center gap-4">
           <AlertTriangle size={48} className="text-error-400" />
           <p className="text-xl font-bold text-error-400">Session Suspended</p>
-          <p className="text-neutral-400 text-sm">Camera & microphone disabled. Click here or return to window.</p>
-          <Button onClick={() => setSuspended(false)} className="active:scale-95">Resume Session</Button>
+          <p className="text-neutral-400 text-sm">Tab switch flagged. Camera & microphone disabled — return to this window to resume.</p>
         </div>
       )}
 
@@ -185,10 +178,11 @@ export default function Practice() {
                 mlimAnalysis={mlim.latestAnalysis}
                 mlimAnalyzing={mlim.isAnalyzing}
                 onFaceData={setFaceData}
-                suspended={suspended}
+                suspended={cheating.suspended}
+                streamRef={videoStreamRef}
               />
               <div className="absolute top-2 right-2 w-32 h-24 rounded-xl overflow-hidden border border-neutral-200 shadow-2xl bg-neutral-100 z-20">
-                <InterviewerAvatar text={avatarText} speaking={avatarSpeaking && !suspended} onSpeakEnd={handleAvatarEnd} />
+                <InterviewerAvatar text={avatarText} speaking={avatarSpeaking && !cheating.suspended} onSpeakEnd={handleAvatarEnd} />
                 <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2">
                   <span className="text-[7px] text-neutral-500 bg-black/50 px-1 py-0.5 rounded font-mono">AI INTERVIEWER</span>
                 </div>
@@ -214,7 +208,14 @@ export default function Practice() {
               </div>
 
               <div className="overflow-y-auto">
-                {!showResult ? (
+                {skipped ? (
+                  <div className="px-4 py-3 space-y-3">
+                    <p className="text-xs text-neutral-500">Question skipped — no feedback generated for this one.</p>
+                    <Button onClick={handleNext} className="w-full active:scale-95" size="sm">
+                      {isLast ? "View Report" : <>Next <ChevronRight size={13} /></>}
+                    </Button>
+                  </div>
+                ) : !showResult ? (
                   <div className="px-4 py-2.5 space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex gap-1.5">
@@ -225,11 +226,20 @@ export default function Practice() {
                           <Mic size={9} /> VOICE
                         </button>
                       </div>
-                      {timerActive && (
-                        <div className="w-28">
-                          <TimerBar key={timerKey} duration={120} onTimeout={handleTimeout} />
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleSkip}
+                          disabled={loading}
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-mono border border-neutral-200 text-neutral-500 hover:text-neutral-700 transition-all active:scale-95 disabled:opacity-50"
+                        >
+                          <SkipForward size={9} /> SKIP
+                        </button>
+                        {timerActive && (
+                          <div className="w-28">
+                            <TimerBar key={timerKey} duration={120} onTimeout={handleTimeout} />
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {inputMode === "text" ? (
@@ -240,10 +250,10 @@ export default function Practice() {
                           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && answer.trim()) { e.preventDefault(); handleSubmit(); } }}
                           placeholder="Type your answer... (Enter to submit)"
                           rows={3}
-                          disabled={loading || suspended}
+                          disabled={loading || cheating.suspended}
                           className="flex-1 rounded-xl px-3 py-2 text-sm resize-none disabled:opacity-50"
                         />
-                        <Button onClick={() => handleSubmit()} disabled={!answer.trim() || loading || suspended} loading={loading} className="flex-shrink-0 px-3 active:scale-95">
+                        <Button onClick={() => handleSubmit()} disabled={!answer.trim() || loading || cheating.suspended} loading={loading} className="flex-shrink-0 px-3 active:scale-95">
                           Submit
                         </Button>
                       </div>
@@ -252,7 +262,7 @@ export default function Practice() {
                         <div className="flex items-center gap-2">
                           <AudioRecorder
                             onTranscript={handleTranscript}
-                            disabled={loading || suspended}
+                            disabled={loading || cheating.suspended}
                             onRecordingChange={setIsRecording}
                             streamRef={micStreamRef}
                           />
@@ -260,7 +270,7 @@ export default function Practice() {
                             <Button onClick={() => handleSubmit()} disabled={loading} loading={loading} className="flex-shrink-0 px-3 active:scale-95">Submit</Button>
                           )}
                         </div>
-                        {answer && (
+                        {answer && !isRecording && (
                           <div className="bg-neutral-100 rounded-xl px-3 py-1.5 border border-neutral-200">
                             <p className="text-xs text-neutral-600 line-clamp-2">{answer}</p>
                           </div>
@@ -274,11 +284,10 @@ export default function Practice() {
                     {feedback && (
                       <Button
                         onClick={handleNext}
-                        disabled={avatarSpeaking}
                         className="w-full active:scale-95"
                         size="sm"
                       >
-                        {avatarSpeaking ? <><div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse mr-2" />Speaking...</> : isLast ? "View Report" : <>Next <ChevronRight size={13} /></>}
+                        {isLast ? "View Report" : <>Next <ChevronRight size={13} /></>}
                       </Button>
                     )}
                   </div>
@@ -298,7 +307,7 @@ export default function Practice() {
               tabSwitches={summary.tab_switches}
               windowBlurs={summary.window_blurs}
               copyPastes={summary.copy_pastes}
-              suspended={suspended}
+              suspended={cheating.suspended}
             />
           </div>
         </div>
