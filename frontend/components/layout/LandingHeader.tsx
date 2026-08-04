@@ -38,16 +38,20 @@ export function LandingHeader() {
 
         <nav className="hidden md:flex items-center gap-7">
           {links.map((l) => (
-            
+            <Link
               key={l.href}
               href={l.href}
               className="text-[13px] font-medium transition-colors"
               style={{ color: "#9ca3af" }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "#9ca3af")}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "#fff";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "#9ca3af";
+              }}
             >
               {l.label}
-            </a>
+            </Link>
           ))}
         </nav>
 
