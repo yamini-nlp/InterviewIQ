@@ -18,7 +18,6 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-const BASE = process.env.NEXT_PUBLIC_API_URL;
 
 async function parseJsonSafely(res: Response): Promise<any> {
   const text = await res.text();
@@ -31,15 +30,9 @@ async function parseJsonSafely(res: Response): Promise<any> {
 }
 
 async function postAuth(path: string, payload: Record<string, unknown>) {
-  if (!BASE) {
-    throw new Error(
-      "The app isn't configured with an API URL (NEXT_PUBLIC_API_URL). Set it in your deployment environment variables."
-    );
-  }
-
   let res: Response;
   try {
-    res = await fetch(`${BASE}${path}`, {
+    res = await fetch(path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -87,16 +80,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    if (BASE) {
-      try {
-        await fetch(`${BASE}/api/auth/logout`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-        });
-      } catch {
-        // Network failures must never block a local logout.
-      }
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+    } catch {
+
     }
     clearTokens();
     setUserState(null);
