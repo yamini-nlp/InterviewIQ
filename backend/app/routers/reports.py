@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Response
 from app.services.report_service import generate_report
 from app.services.evaluation_service import evaluate_answer
+from app.services.pdf_service import build_report_pdf
 from app.database import get_db
 from app.models.session import Session, Feedback, Answer
 from app.auth.dependencies import get_current_user
@@ -11,6 +12,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
+
+CHEATING_EVENT_TYPES = {
+    "copy_paste", "window_blur", "right_click", "devtools_open",
+    "multiple_faces", "no_face", "mic_muted", "inactivity",
+}
 
 
 @router.post("/generate/{session_id}")
@@ -61,12 +67,18 @@ async def generate(session_id: str, current_user: dict = Depends(get_current_use
                             weaknesses=["Could not evaluate"],
                             ideal_answer="",
                             suggestions=[],
+                            sentiment="neutral",
+                            intent="",
+                            answer_tips=[],
                         ))
 
             session.feedbacks = feedbacks
 
         integrity_events = data.get("integrity_events", [])
         tab_switches = sum(1 for e in integrity_events if e.get("event_type") == "tab_switch")
+        cheating_detection_count = sum(
+            1 for e in integrity_events if e.get("event_type") in CHEATING_EVENT_TYPES
+        )
         copy_pastes = sum(1 for e in integrity_events if e.get("event_type") == "copy_paste")
         total_events = len(integrity_events)
         integrity_score = max(0, 100 - (total_events * 7))
@@ -106,6 +118,7 @@ async def generate(session_id: str, current_user: dict = Depends(get_current_use
             "integrity_score": integrity_score,
             "tab_switches": tab_switches,
             "copy_pastes": copy_pastes,
+            "cheating_detection_count": cheating_detection_count,
             "total_violations": total_events,
         }
 
@@ -164,6 +177,55 @@ async def get_sessions(current_user: dict = Depends(get_current_user)):
         logger.error(
             f"Unhandled error in GET /api/reports/sessions/all for user "
             f"{current_user['id']}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail="An unexpected error occurred. Please try again later."
+        )
+
+
+@router.get("/{session_id}/pdf")
+async def get_report_pdf(session_id: str, current_user: dict = Depends(get_current_user)):
+    try:
+        db = get_db()
+        if db is None:
+            raise HTTPException(status_code=503, detail="Database unavailable")
+
+        data = None
+        try:
+            data = await db.reports.find_one(
+                {"session_id": session_id, "user_id": current_user["id"]},
+                {"_id": 0}
+            )
+        except Exception as db_error:
+            metrics.record_mongo_error(operation="reports_find_one")
+            logger.error(f"DB read error for report pdf {session_id}: {db_error}", exc_info=True)
+            raise HTTPException(status_code=503, detail="Database error")
+
+        if not data:
+            raise HTTPException(
+                status_code=404,
+                detail="Report not found. Generate it first via POST /api/reports/generate/{session_id}",
+            )
+
+        try:
+            pdf_bytes = build_report_pdf(data)
+        except Exception as pdf_error:
+            logger.error(f"PDF generation failed for report {session_id}: {pdf_error}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Could not generate the PDF report.")
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="InterviewIQ_Report_{session_id}.pdf"'
+            },
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            f"Unhandled error in GET /api/reports/{session_id}/pdf: {e}",
             exc_info=True,
         )
         raise HTTPException(

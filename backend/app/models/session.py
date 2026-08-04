@@ -44,6 +44,9 @@ class Feedback(BaseModel):
     weaknesses: List[str] = []
     ideal_answer: str = ""
     suggestions: List[str] = []
+    sentiment: str = "neutral"
+    intent: str = ""
+    answer_tips: List[str] = []
 
 
 class Session(BaseModel):
