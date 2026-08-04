@@ -111,7 +111,7 @@ export default function Home() {
       >
         <div className="relative z-10 max-w-3xl mx-auto text-center">
           <h1 className="font-display font-extrabold uppercase leading-[0.98] text-white text-[2.6rem] sm:text-6xl lg:text-[4.25rem] tracking-tight">
-            InterviewIQ
+            Interview IQ
           </h1>
 
           <p className="font-display font-medium mt-4 text-lg sm:text-xl tracking-tight" style={{ color: "#8b85ff" }}>
