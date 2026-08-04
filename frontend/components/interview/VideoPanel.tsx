@@ -19,13 +19,20 @@ interface Props {
   mlimAnalyzing?: boolean;
   onFaceData?: (data: FaceDetectionData | null) => void;
   suspended?: boolean;
+  streamRef?: React.MutableRefObject<MediaStream | null>;
 }
 
+export const EXPRESSION_KEYS = ["neutral", "happy", "sad", "angry", "fearful", "disgusted", "surprised"];
 const EC: Record<string, string> = { happy: "#10b981", sad: "#60a5fa", angry: "#ef4444", fearful: "#f59e0b", disgusted: "#a855f7", surprised: "#06b6d4", neutral: "#9ca3af" };
 function ec(e: string) { return EC[e] || "#9ca3af"; }
 
-export function VideoPanel({ isSpeaking = false, mlimAnalysis = null, mlimAnalyzing = false, onFaceData, suspended = false }: Props) {
-  const { videoRef, active, error, startCamera, stopCamera } = useCamera();
+const SMOOTHING_ALPHA = 0.18;
+const EMIT_INTERVAL_MS = 350;
+const DOMINANT_SWITCH_MARGIN = 0.12;
+const DOMINANT_SWITCH_STREAK = 3;
+
+export function VideoPanel({ isSpeaking = false, mlimAnalysis = null, mlimAnalyzing = false, onFaceData, suspended = false, streamRef }: Props) {
+  const { videoRef, streamRef: internalStreamRef, active, error, startCamera, stopCamera } = useCamera();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number | null>(null);
   const faceApiRef = useRef<any>(null);
@@ -34,10 +41,21 @@ export function VideoPanel({ isSpeaking = false, mlimAnalysis = null, mlimAnalyz
   const onFaceDataRef = useRef(onFaceData);
   useEffect(() => { onFaceDataRef.current = onFaceData; }, [onFaceData]);
 
+  const smoothedRef = useRef<Record<string, number>>(
+    EXPRESSION_KEYS.reduce((acc, k) => ({ ...acc, [k]: k === "neutral" ? 1 : 0 }), {} as Record<string, number>)
+  );
+  const dominantRef = useRef("neutral");
+  const dominantCandidateRef = useRef<{ label: string; streak: number }>({ label: "neutral", streak: 0 });
+  const lastEmitRef = useRef(0);
+
   const [recAnnouncement, setRecAnnouncement] = useState("");
   const wasRecordingRef = useRef(false);
 
   useEffect(() => { startCamera(); return () => { stopCamera(); }; }, [startCamera, stopCamera]);
+
+  useEffect(() => {
+    if (streamRef) streamRef.current = internalStreamRef.current;
+  }, [active, streamRef, internalStreamRef]);
 
   useEffect(() => {
     const isCurrentlyRecording = active && !suspended;
@@ -88,11 +106,35 @@ export function VideoPanel({ isSpeaking = false, mlimAnalysis = null, mlimAnalyz
       ctx.save();
       ctx.scale(-1, 1);
       ctx.translate(-canvas.width, 0);
+
       if (detection) {
         const { box } = detection.detection;
-        const exprs = detection.expressions as Record<string, number>;
-        const dominant = Object.entries(exprs).sort((a, b) => b[1] - a[1])[0];
-        const color = ec(dominant[0]);
+        const rawExprs = detection.expressions as Record<string, number>;
+
+        for (const key of EXPRESSION_KEYS) {
+          const rawVal = rawExprs[key] ?? 0;
+          smoothedRef.current[key] = smoothedRef.current[key] + SMOOTHING_ALPHA * (rawVal - smoothedRef.current[key]);
+        }
+
+        const smoothedSorted = EXPRESSION_KEYS.map((k) => [k, smoothedRef.current[k]] as [string, number]).sort((a, b) => b[1] - a[1]);
+        const topLabel = smoothedSorted[0][0];
+        const topVal = smoothedSorted[0][1];
+        const currentDominantVal = smoothedRef.current[dominantRef.current];
+
+        if (topLabel !== dominantRef.current && topVal - currentDominantVal > DOMINANT_SWITCH_MARGIN) {
+          if (dominantCandidateRef.current.label === topLabel) {
+            dominantCandidateRef.current.streak += 1;
+          } else {
+            dominantCandidateRef.current = { label: topLabel, streak: 1 };
+          }
+          if (dominantCandidateRef.current.streak >= DOMINANT_SWITCH_STREAK) {
+            dominantRef.current = topLabel;
+          }
+        } else {
+          dominantCandidateRef.current = { label: dominantRef.current, streak: 0 };
+        }
+
+        const color = ec(dominantRef.current);
         ctx.strokeStyle = color;
         ctx.lineWidth = 1.5;
         ctx.shadowColor = color;
@@ -105,14 +147,32 @@ export function VideoPanel({ isSpeaking = false, mlimAnalysis = null, mlimAnalyz
           ctx.beginPath(); ctx.moveTo(cx + dx1, cy + dy1); ctx.lineTo(cx, cy); ctx.lineTo(cx + dx2, cy + dy2); ctx.stroke();
         });
         ctx.font = "bold 9px monospace"; ctx.fillStyle = "#facc15"; ctx.shadowColor = "#000"; ctx.shadowBlur = 3;
-        ctx.fillText(`${dominant[0].toUpperCase()} ${(dominant[1] * 100).toFixed(0)}%`, box.x, box.y - 5);
+        ctx.fillText(`${dominantRef.current.toUpperCase()} ${(smoothedRef.current[dominantRef.current] * 100).toFixed(0)}%`, box.x, box.y - 5);
         ctx.shadowBlur = 0;
-        const fd: FaceDetectionData = { x: Math.round(canvas.width - box.x - box.width), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height), expressions: exprs, dominantExpression: dominant[0], confidence: detection.detection.score };
-        setFaceData(fd);
-        onFaceDataRef.current?.(fd);
+
+        const now = performance.now();
+        if (now - lastEmitRef.current >= EMIT_INTERVAL_MS) {
+          lastEmitRef.current = now;
+          const stableExpressions = EXPRESSION_KEYS.reduce((acc, k) => ({ ...acc, [k]: smoothedRef.current[k] }), {} as Record<string, number>);
+          const fd: FaceDetectionData = {
+            x: Math.round(canvas.width - box.x - box.width),
+            y: Math.round(box.y),
+            width: Math.round(box.width),
+            height: Math.round(box.height),
+            expressions: stableExpressions,
+            dominantExpression: dominantRef.current,
+            confidence: detection.detection.score,
+          };
+          setFaceData(fd);
+          onFaceDataRef.current?.(fd);
+        }
       } else {
-        setFaceData(null);
-        onFaceDataRef.current?.(null);
+        const now = performance.now();
+        if (now - lastEmitRef.current >= EMIT_INTERVAL_MS) {
+          lastEmitRef.current = now;
+          setFaceData(null);
+          onFaceDataRef.current?.(null);
+        }
       }
       ctx.restore();
       animRef.current = requestAnimationFrame(detect);
@@ -131,8 +191,8 @@ export function VideoPanel({ isSpeaking = false, mlimAnalysis = null, mlimAnalyz
       {suspended && (
         <div className="absolute inset-0 bg-night-900/95 flex flex-col items-center justify-center gap-3 z-20">
           <PauseCircle size={36} className="text-error-400" />
-          <p className="text-sm text-error-400 font-mono font-bold">CAMERA SUSPENDED</p>
-          <p className="text-xs text-neutral-500 font-mono">Return to window to resume</p>
+          <p className="text-sm text-error-400 font-mono font-bold">CAMERA & MIC DISABLED</p>
+          <p className="text-xs text-neutral-500 font-mono">Tab switch flagged — return to window to resume</p>
         </div>
       )}
 
