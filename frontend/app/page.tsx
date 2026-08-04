@@ -190,7 +190,7 @@ export default function Home() {
           </p>
 
           <p className="font-sans mt-6 max-w-xl mx-auto text-base leading-relaxed" style={{ color: "#9ca3af" }}>
-            An animated interviewer speaks your questions, listens to your voice, and watches your face — while the MLIM pipeline reads emotional tone, pragmatic intent, goal drift, and fused intent underneath every answer, then hands you a graded report.
+            Experience interviews with an intelligent AI interviewer that speaks naturally, understands your voice, and evaluates every response through the MLIM pipeline—measuring emotion, intent, communication quality, and behavioral consistency to deliver deep, actionable insights.
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
