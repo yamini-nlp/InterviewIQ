@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Menu, Sun, Moon, Monitor, LogOut, Settings as SettingsIcon } from "lucide-react";
+import { Menu, Sun, Moon, LogOut, Settings as SettingsIcon } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { useSidebar } from "@/components/layout/Sidebar";
@@ -10,12 +10,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
-const THEME_ORDER: Theme[] = ["light", "dark", "system"];
-const THEME_ICON: Record<Theme, typeof Sun> = { light: Sun, dark: Moon, system: Monitor };
-const THEME_LABEL: Record<Theme, string> = { light: "Light", dark: "Dark", system: "System" };
+const THEME_ICON: Record<Theme, typeof Sun> = { light: Sun, dark: Moon };
+const THEME_LABEL: Record<Theme, string> = { light: "Light", dark: "Dark" };
 
 function ThemeToggle() {
-  const [theme, setThemeState] = useState<Theme | null>(null);
+  const [theme, setThemeState] = useState<Theme>("dark");
 
   useEffect(() => {
     setThemeState(getTheme());
@@ -23,22 +22,19 @@ function ThemeToggle() {
 
   const handleClick = useCallback(() => {
     setThemeState((current) => {
-      const active = current ?? "system";
-      const nextIndex = (THEME_ORDER.indexOf(active) + 1) % THEME_ORDER.length;
-      const next = THEME_ORDER[nextIndex];
+      const next: Theme = current === "dark" ? "light" : "dark";
       setTheme(next);
       return next;
     });
   }, []);
 
-  const active = theme ?? "system";
-  const Icon = THEME_ICON[active];
+  const Icon = THEME_ICON[theme];
 
   return (
     <button
       type="button"
       onClick={handleClick}
-      aria-label={`Theme: ${THEME_LABEL[active]}. Click to change.`}
+      aria-label={`Theme: ${THEME_LABEL[theme]}. Click to switch to ${theme === "dark" ? "Light" : "Dark"}.`}
       className="flex h-9 w-9 items-center justify-center rounded-lg text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-50"
     >
       <Icon size={18} aria-hidden="true" />

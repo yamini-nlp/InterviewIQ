@@ -16,6 +16,7 @@ import {
   Sparkles,
   BookOpen,
   Video,
+  LayoutDashboard,
   BarChart3,
   Settings,
   ChevronsLeft,
@@ -117,7 +118,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "Reports",
-    items: [{ label: "Dashboard", href: "/dashboard", icon: BarChart3 }],
+    items: [{ label: "Dashboard", href: "/dashboard", icon: LayoutDashboard }],
   },
   {
     label: "MLIM Insights",
@@ -169,6 +170,7 @@ function NavGroupList({
                   <li key={item.href}>
                     <Link
                       href={item.href}
+                      prefetch={false}
                       onClick={onNavigate}
                       aria-current={isActive ? "page" : undefined}
                       className={cn(

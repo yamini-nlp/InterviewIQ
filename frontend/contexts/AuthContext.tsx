@@ -1,6 +1,6 @@
 "use client";
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
-import { getUser, setUser, clearTokens } from "@/lib/auth";
+import { getUser, setUser, clearTokens, fetchCurrentUser } from "@/lib/auth";
 
 interface User {
   id: string;
@@ -57,12 +57,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const u = getUser();
-    if (u) {
-      setUserState(u);
+    let cancelled = false;
+    const cached = getUser();
+    if (cached) {
+      setUserState(cached);
       setToken("cookie");
     }
-    setIsLoading(false);
+
+    (async () => {
+      const fresh = await fetchCurrentUser();
+      if (cancelled) return;
+      if (fresh) {
+        setUser(fresh);
+        setUserState(fresh);
+        setToken("cookie");
+      } else {
+        clearTokens();
+        setUserState(null);
+        setToken(null);
+      }
+      setIsLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -87,7 +106,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         credentials: "include",
       });
     } catch {
-
     }
     clearTokens();
     setUserState(null);

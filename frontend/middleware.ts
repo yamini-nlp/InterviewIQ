@@ -3,6 +3,14 @@ import { NextRequest, NextResponse } from "next/server";
 const PROTECTED = ["/setup", "/simulation", "/practice", "/dashboard", "/report", "/settings"];
 const AUTH_PAGES = ["/login", "/register"];
 
+function isPrefetchRequest(request: NextRequest): boolean {
+  return (
+    request.headers.get("next-router-prefetch") === "1" ||
+    request.headers.get("purpose") === "prefetch" ||
+    request.headers.get("sec-purpose") === "prefetch"
+  );
+}
+
 function safeRedirectTarget(request: NextRequest): string {
   const redirectParam = request.nextUrl.searchParams.get("redirect");
   if (redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")) {
@@ -35,6 +43,8 @@ export async function middleware(request: NextRequest) {
   const isAuthPage = AUTH_PAGES.some((p) => pathname.startsWith(p));
 
   if (!isProtected && !isAuthPage) return NextResponse.next();
+
+  if (isPrefetchRequest(request)) return NextResponse.next();
 
   const accessToken = request.cookies.get("rr_access_token")?.value;
 

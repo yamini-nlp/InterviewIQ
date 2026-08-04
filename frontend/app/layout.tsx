@@ -13,10 +13,8 @@ const themeInitScript = `
 (function () {
   try {
     var match = document.cookie.match(/(?:^|; )theme=([^;]*)/);
-    var stored = match ? decodeURIComponent(match[1]) : "system";
-    var resolved = stored === "system" || !stored
-      ? (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
-      : stored;
+    var stored = match ? decodeURIComponent(match[1]) : "dark";
+    var resolved = stored === "light" ? "light" : "dark";
     document.documentElement.classList.toggle("dark", resolved === "dark");
     document.documentElement.style.colorScheme = resolved;
   } catch (e) {}

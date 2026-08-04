@@ -4,11 +4,13 @@ import { usePathname } from "next/navigation";
 import { Sidebar, SidebarProvider } from "@/components/layout/Sidebar";
 import { Navbar } from "@/components/layout/Navbar";
 
+const STANDALONE_ROUTES = ["/", "/login", "/register"];
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isLanding = pathname === "/";
+  const isStandalone = STANDALONE_ROUTES.includes(pathname);
 
-  if (isLanding) {
+  if (isStandalone) {
     return <>{children}</>;
   }
 

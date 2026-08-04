@@ -9,12 +9,11 @@ import { useToast } from "@/hooks/useToast";
 import { getTheme, setTheme as persistTheme, type Theme } from "@/lib/theme";
 import { exportUserData, deleteAccount, logoutAllDevices } from "@/lib/api";
 import { clearTokens } from "@/lib/auth";
-import { Sun, Moon, Monitor, Download, Trash2, LogOut, ShieldOff } from "lucide-react";
+import { Sun, Moon, Download, Trash2, LogOut, ShieldOff } from "lucide-react";
 
 const THEME_OPTIONS: { value: Theme; label: string; icon: typeof Sun }[] = [
   { value: "light", label: "Light", icon: Sun },
   { value: "dark", label: "Dark", icon: Moon },
-  { value: "system", label: "System", icon: Monitor },
 ];
 
 export default function SettingsPage() {

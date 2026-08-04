@@ -77,7 +77,7 @@ export default function Practice() {
     try {
       const [fb, mlimResult] = await Promise.all([
         evaluateAnswer({ session_id: session.session_id, question_id: current.id, question_text: current.text, question_category: current.category, question_difficulty: current.difficulty, answer_text: ans, job_role: session.job_role }),
-        mlim.analyze({ sessionId: session.session_id, questionId: current.id, questionText: current.text, answerText: ans, jobRole: session.job_role, faceSnapshot: faceData }),
+        mlim.analyze({ sessionId: session.session_id, questionId: current.id, questionText: current.text, answerText: ans, jobRole: session.job_role, faceSnapshot: faceData as Record<string, unknown> | null }),
       ]);
       setFeedback(fb);
       if (!mlimResult) {
