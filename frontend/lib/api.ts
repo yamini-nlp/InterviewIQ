@@ -89,6 +89,7 @@ export async function evaluateAnswer(payload: {
 
 export async function simulateRespond(payload: {
   session_id: string;
+  question_id: string;
   question_text: string;
   answer_text: string;
   interviewer_style?: string;

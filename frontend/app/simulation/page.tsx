@@ -60,7 +60,6 @@ export default function Simulation() {
     } else {
       setTimerActive(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleAvatarSpeakEnd = useCallback(() => {
@@ -96,6 +95,7 @@ export default function Simulation() {
 
       const respondPromise = simulateRespond({
         session_id: session.session_id,
+        question_id: current.id,
         question_text: current.text,
         answer_text: answerToSubmit,
         interviewer_style: "professional",

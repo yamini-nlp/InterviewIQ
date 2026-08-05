@@ -16,11 +16,29 @@ router = APIRouter(prefix="/api/simulate", tags=["simulate"])
 
 class SimulateRequest(BaseModel):
     session_id: str
+    question_id: Optional[str] = None
     question_text: str
     answer_text: str
     interviewer_style: str = "professional"
     mlim_modifier: Optional[str] = None
     clarification_prompt: Optional[str] = None
+
+
+async def _upsert_answer(db, session_id: str, user_id: str, answer: dict):
+    result = await db.sessions.update_one(
+        {
+            "id": session_id,
+            "user_id": user_id,
+            "answers.question_id": answer["question_id"],
+        },
+        {"$set": {"answers.$[el]": answer}},
+        array_filters=[{"el.question_id": answer["question_id"]}],
+    )
+    if result.matched_count == 0:
+        await db.sessions.update_one(
+            {"id": session_id, "user_id": user_id},
+            {"$push": {"answers": answer}},
+        )
 
 
 @router.post("/respond")
@@ -57,13 +75,10 @@ Rephrase it naturally as a real interviewer would ask it. Return ONLY the rephra
 
         response = await call_groq(prompt, max_tokens=120, temperature=0.5)
 
-        answer = Answer(question_id="sim", text=request.answer_text)
+        answer = Answer(question_id=request.question_id or "sim", text=request.answer_text)
         if db is not None:
             try:
-                await db.sessions.update_one(
-                    {"id": request.session_id, "user_id": current_user["id"]},
-                    {"$push": {"answers": answer.model_dump()}},
-                )
+                await _upsert_answer(db, request.session_id, current_user["id"], answer.model_dump())
             except Exception as db_error:
                 metrics.record_mongo_error(operation="sessions_update")
                 logger.warning(f"DB save skipped for session {request.session_id}: {db_error}")
