@@ -41,12 +41,16 @@ async def generate(session_id: str, current_user: dict = Depends(get_current_use
 
         if len(session.feedbacks) == 0 and len(session.answers) > 0:
             feedbacks = []
+            corrected_answers = []
             questions = session.questions
             answers = session.answers
 
             for i, answer in enumerate(answers):
                 q = questions[i] if i < len(questions) else (questions[-1] if questions else None)
                 if q:
+                    corrected_answers.append(Answer(
+                        question_id=q.id, text=answer.text, timestamp=answer.timestamp
+                    ))
                     try:
                         fb = await evaluate_answer(
                             question_id=q.id,
@@ -73,6 +77,7 @@ async def generate(session_id: str, current_user: dict = Depends(get_current_use
                         ))
 
             session.feedbacks = feedbacks
+            session.answers = corrected_answers
 
         integrity_events = data.get("integrity_events", [])
         tab_switches = sum(1 for e in integrity_events if e.get("event_type") == "tab_switch")
@@ -130,6 +135,7 @@ async def generate(session_id: str, current_user: dict = Depends(get_current_use
                         "overall_score": report.overall_score,
                         "completed_at": datetime.utcnow().isoformat(),
                         "feedbacks": [f.model_dump() for f in session.feedbacks],
+                        "answers": [a.model_dump() for a in session.answers],
                     }},
                 )
                 existing = await db.reports.find_one({"session_id": session_id, "user_id": current_user["id"]})
