@@ -396,6 +396,6 @@ InterviewIQ/
 
 <div align="center">
 
-*Built by [Yamini Reddy](https://github.com/yamini-nlp)*
+*Built by [Yamini G](https://github.com/yamini-nlp)*
 
 </div>
