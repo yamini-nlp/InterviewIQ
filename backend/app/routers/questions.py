@@ -6,7 +6,7 @@ from app.database import get_db
 from app.models.session import SessionMode
 from app.auth.dependencies import get_current_user
 from app.core import metrics
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import logging
 
@@ -38,7 +38,7 @@ async def generate(request: GenerateQuestionsRequest, current_user: dict = Depen
             "answers": [],
             "feedbacks": [],
             "integrity_events": [],
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "completed_at": None,
             "overall_score": None,
         }

@@ -32,7 +32,7 @@ async def log_events(batch: IntegrityBatch, current_user: dict = Depends(get_cur
 
     db = get_db()
     if db is not None:
-        now = datetime.datetime.utcnow().isoformat()
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
         docs = [
             {
                 "session_id": e.session_id,

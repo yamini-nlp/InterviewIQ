@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -20,7 +20,7 @@ def test_fairness_probe_result_serialization():
                 },
             }
         ],
-        run_at=datetime.utcnow(),
+        run_at=datetime.now(timezone.utc),
     )
 
     dumped = result.model_dump()

@@ -1,5 +1,5 @@
 from io import BytesIO
-from datetime import datetime
+from datetime import datetime, timezone
 from xml.sax.saxutils import escape
 
 from reportlab.lib.pagesizes import A4
@@ -384,7 +384,7 @@ def build_report_pdf(report: dict) -> bytes:
     overall = report.get("overall_score", 0)
     job_role = report.get("job_role") or "Candidate"
     mode = report.get("mode") or "practice"
-    generated_on = datetime.utcnow().strftime("%b %d, %Y %H:%M UTC")
+    generated_on = datetime.now(timezone.utc).strftime("%b %d, %Y %H:%M UTC")
 
     story.append(HeaderBanner(CONTENT_W, 40 * mm, job_role, generated_on, overall, mode))
     story.append(Spacer(1, 10))

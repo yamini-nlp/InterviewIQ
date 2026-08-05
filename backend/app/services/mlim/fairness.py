@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List
 
 from app.services.groq_service import call_groq_json
@@ -96,5 +96,5 @@ async def run_fairness_probe(base_utterances: List[str]) -> FairnessProbeResult:
         sample_size=sample_size,
         label_stability_rate=label_stability_rate,
         flagged_utterances=flagged_utterances,
-        run_at=datetime.utcnow(),
+        run_at=datetime.now(timezone.utc),
     )

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 import math
 import uuid
@@ -115,7 +115,7 @@ class MLIMAnalysis(BaseModel):
 
     def model_post_init(self, __context):
         if self.timestamp is None:
-            self.timestamp = datetime.utcnow()
+            self.timestamp = datetime.now(timezone.utc)
 
 
 class GoalState(BaseModel):
@@ -180,7 +180,7 @@ class EscalationRecord(BaseModel):
     entropy: float
     stress_indicators: float
     status: str = "open"
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     reviewed_at: Optional[datetime] = None
     reviewer_notes: Optional[str] = None
 

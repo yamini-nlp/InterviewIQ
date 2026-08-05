@@ -6,7 +6,7 @@ from app.database import get_db
 from app.models.session import Session, Feedback, Answer
 from app.auth.dependencies import get_current_user
 from app.core import metrics
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 logger = logging.getLogger(__name__)
@@ -133,7 +133,7 @@ async def generate(session_id: str, current_user: dict = Depends(get_current_use
                     {"id": session_id, "user_id": current_user["id"]},
                     {"$set": {
                         "overall_score": report.overall_score,
-                        "completed_at": datetime.utcnow().isoformat(),
+                        "completed_at": datetime.now(timezone.utc).isoformat(),
                         "feedbacks": [f.model_dump() for f in session.feedbacks],
                         "answers": [a.model_dump() for a in session.answers],
                     }},

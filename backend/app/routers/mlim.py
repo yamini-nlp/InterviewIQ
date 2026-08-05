@@ -678,7 +678,7 @@ async def update_escalation(
         update_fields = {
             "status": request.status,
             "reviewer_notes": request.reviewer_notes,
-            "reviewed_at": datetime.datetime.utcnow().isoformat(),
+            "reviewed_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         }
         await db.mlim_escalations.update_one(
             {"id": escalation_id, "user_id": current_user["id"]},
