@@ -1,20 +1,37 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { getReport } from "@/lib/api";
+import { getReport, downloadReportPDF } from "@/lib/api";
 import { Report } from "@/types";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge, Progress } from "@/components/ui/Badge";
 import { scoreColor } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
+import { useToast } from "@/hooks/useToast";
 import { MLIMReportSection } from "@/components/mlim/MLIMReportSection";
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer } from "recharts";
-import { Download, BookOpen, Target, TrendingUp, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Download, BookOpen, Target, TrendingUp, Loader2, ChevronDown, ChevronUp,
+  MessageCircle, PersonStanding, ShieldAlert, Gauge, Brain, Lightbulb,
+} from "lucide-react";
+
+const SENTIMENT_VARIANT: Record<string, "success" | "warning" | "error" | "default"> = {
+  confident: "success",
+  calm: "success",
+  stressed: "warning",
+  anxious: "warning",
+  uncertain: "warning",
+  evasive: "error",
+  cheated: "error",
+  neutral: "default",
+};
 
 export default function ReportPage() {
   const { id } = useParams();
+  const { toast } = useToast();
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -24,18 +41,26 @@ export default function ReportPage() {
   }, [id]);
 
   const exportPDF = async () => {
-    const { default: jsPDF } = await import("jspdf");
-    const { default: html2canvas } = await import("html2canvas");
-    const el = document.getElementById("report-content");
-    if (!el) return;
-    const bgVar = getComputedStyle(document.documentElement).getPropertyValue("--color-neutral-50").trim();
-    const bgColor = bgVar ? `rgb(${bgVar.replace(/\s+/g, ", ")})` : "#ffffff";
-    const canvas = await html2canvas(el, { backgroundColor: bgColor, scale: 2 });
-    const pdf = new jsPDF("p", "mm", "a4");
-    const w = pdf.internal.pageSize.getWidth();
-    const h = (canvas.height / canvas.width) * w;
-    pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, w, h);
-    pdf.save(`InterviewIQ_Report_${id}.pdf`);
+    setExporting(true);
+    try {
+      const blob = await downloadReportPDF(id as string);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `InterviewIQ_Report_${id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast({
+        title: "Export failed",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "error",
+      });
+    } finally {
+      setExporting(false);
+    }
   };
 
   if (loading) return (
@@ -56,6 +81,8 @@ export default function ReportPage() {
     { subject: "Confidence", value: report.category_scores.confidence * 10 },
   ];
 
+  const integrity = report.integrity_summary;
+
   return (
     <div className="min-h-screen bg-neutral-50">
       <main className="pt-24 pb-16 px-6 max-w-5xl mx-auto">
@@ -64,8 +91,9 @@ export default function ReportPage() {
             <h1 className="font-display text-3xl font-bold">Interview Report</h1>
             <p className="text-neutral-500 mt-1">{report.completed_questions} of {report.total_questions} questions completed</p>
           </div>
-          <Button onClick={exportPDF} variant="outline">
-            <Download size={14} /> Export PDF
+          <Button onClick={exportPDF} variant="outline" disabled={exporting}>
+            {exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+            {exporting ? "Preparing PDF..." : "Export PDF"}
           </Button>
         </div>
 
@@ -77,6 +105,12 @@ export default function ReportPage() {
                 {report.overall_score}
               </p>
               <p className="text-neutral-500 text-sm mt-1">out of 10</p>
+              {report.hiring_recommendation && (
+                <Badge className="mt-3" variant={
+                  report.hiring_recommendation === "Strong Hire" || report.hiring_recommendation === "Hire"
+                    ? "success" : report.hiring_recommendation === "Maybe" ? "warning" : "error"
+                } text={report.hiring_recommendation} />
+              )}
             </Card>
             <Card className="md:col-span-2">
               <ResponsiveContainer width="100%" height={180}>
@@ -103,13 +137,67 @@ export default function ReportPage() {
             ))}
           </div>
 
+          {integrity && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-accent">
+                  <ShieldAlert size={14} /> Integrity & Session Behavior
+                </CardTitle>
+              </CardHeader>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="bg-neutral-100 rounded-xl p-3 text-center">
+                  <p className="text-[10px] text-neutral-500 uppercase tracking-wider mb-1">Integrity Score</p>
+                  <p className={`font-display font-bold text-xl ${scoreColor(integrity.integrity_score / 10)}`}>
+                    {integrity.integrity_score}
+                  </p>
+                </div>
+                <div className="bg-neutral-100 rounded-xl p-3 text-center">
+                  <p className="text-[10px] text-neutral-500 uppercase tracking-wider mb-1">Tab Switches</p>
+                  <p className="font-display font-bold text-xl text-neutral-900">{integrity.tab_switches}</p>
+                </div>
+                <div className="bg-neutral-100 rounded-xl p-3 text-center">
+                  <p className="text-[10px] text-neutral-500 uppercase tracking-wider mb-1">Cheating Signals</p>
+                  <p className="font-display font-bold text-xl text-neutral-900">{integrity.cheating_detection_count}</p>
+                </div>
+                <div className="bg-neutral-100 rounded-xl p-3 text-center">
+                  <p className="text-[10px] text-neutral-500 uppercase tracking-wider mb-1">Total Flags</p>
+                  <p className="font-display font-bold text-xl text-neutral-900">{integrity.total_violations}</p>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {(report.overall_sentiment || report.overall_intent) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-accent">
+                  <Brain size={14} /> Overall Sentiment & Intent — Entire Session
+                </CardTitle>
+              </CardHeader>
+              <div className="space-y-3">
+                {report.overall_sentiment && (
+                  <p className="text-sm text-neutral-700 leading-relaxed">
+                    <span className="font-semibold text-neutral-900">Sentiment: </span>
+                    {report.overall_sentiment}
+                  </p>
+                )}
+                {report.overall_intent && (
+                  <p className="text-sm text-neutral-700 leading-relaxed">
+                    <span className="font-semibold text-neutral-900">Intent: </span>
+                    {report.overall_intent}
+                  </p>
+                )}
+              </div>
+            </Card>
+          )}
+
           <MLIMReportSection sessionId={id as string} />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-error-500">
-                  <Target size={14} /> Weak Areas
+                  <Target size={14} /> Areas of Improvement
                 </CardTitle>
               </CardHeader>
               <ul className="space-y-2">
@@ -150,6 +238,48 @@ export default function ReportPage() {
             </Card>
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-accent">
+                  <MessageCircle size={14} /> How to Improve Communication Skills
+                </CardTitle>
+              </CardHeader>
+              <ul className="space-y-2">
+                {report.communication_improvement.map((c, i) => (
+                  <li key={i} className="text-sm text-neutral-600 flex gap-2">
+                    <span className="text-accent mt-0.5">•</span>{c}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-accent">
+                  <PersonStanding size={14} /> How to Improve Body Language
+                </CardTitle>
+              </CardHeader>
+              <ul className="space-y-2">
+                {report.body_language_improvement.map((b, i) => (
+                  <li key={i} className="text-sm text-neutral-600 flex gap-2">
+                    <span className="text-accent mt-0.5">•</span>{b}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          </div>
+
+          {report.brutal_assessment && (
+            <Card className="border border-warning-500/30 bg-warning-500/5">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-warning-600">
+                  <Gauge size={14} /> Honest, Brutal Assessment
+                </CardTitle>
+              </CardHeader>
+              <p className="text-sm text-neutral-700 leading-relaxed">{report.brutal_assessment}</p>
+            </Card>
+          )}
+
           <Card>
             <CardHeader><CardTitle>Question Breakdown</CardTitle></CardHeader>
             <div className="space-y-3">
@@ -186,10 +316,50 @@ export default function ReportPage() {
                           <p className="text-sm text-neutral-800 leading-relaxed whitespace-pre-wrap">{q.answer}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs text-neutral-500">Result:</span>
                         <Badge text={q.correctness} type="correctness" />
+                        {q.sentiment && (
+                          <>
+                            <span className="text-xs text-neutral-500 ml-2">Sentiment:</span>
+                            <Badge text={q.sentiment} variant={SENTIMENT_VARIANT[q.sentiment] ?? "default"} />
+                          </>
+                        )}
                       </div>
+
+                      {q.intent && (
+                        <p className="text-sm text-neutral-600">
+                          <span className="font-medium text-neutral-800">Intent detected: </span>
+                          {q.intent.replace(/_/g, " ")}
+                        </p>
+                      )}
+
+                      {q.answer_tips?.length > 0 && (
+                        <div>
+                          <p className="text-xs font-medium text-accent mb-2 flex items-center gap-1.5">
+                            <Lightbulb size={12} /> How This Question Should Be Answered
+                          </p>
+                          <ul className="space-y-1.5">
+                            {q.answer_tips.map((tip, ti) => (
+                              <li key={ti} className="text-sm text-neutral-600 flex gap-2">
+                                <span className="text-accent mt-0.5">•</span>{tip}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {q.ideal_answer && (
+                        <div>
+                          <p className="text-xs font-medium text-success-600 mb-2">
+                            Ideal Answer That Scores Well & Impresses the Interviewer
+                          </p>
+                          <div className="bg-success-500/5 rounded-xl p-4 border border-success-500/20">
+                            <p className="text-sm text-neutral-800 leading-relaxed whitespace-pre-wrap">{q.ideal_answer}</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

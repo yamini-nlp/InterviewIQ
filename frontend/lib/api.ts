@@ -113,6 +113,25 @@ export async function getSessions() {
   return apiFetch<{ sessions: any[] }>("/api/reports/sessions/all");
 }
 
+export async function downloadReportPDF(session_id: string): Promise<Blob> {
+  const doFetch = () =>
+    fetch(`${BASE}/api/reports/${session_id}/pdf`, {
+      credentials: "include",
+    });
+
+  let res = await doFetch();
+  if (res.status === 401) {
+    const refreshed = await refreshAccessToken();
+    if (!refreshed) throw new Error("Session expired. Please log in again.");
+    res = await doFetch();
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Couldn't generate the PDF. Please try again." }));
+    throw new Error(err.detail || "Couldn't generate the PDF. Please try again.");
+  }
+  return res.blob();
+}
+
 export async function exportUserData(): Promise<Blob> {
   const doFetch = () =>
     fetch(`${BASE}/api/privacy/export`, {
