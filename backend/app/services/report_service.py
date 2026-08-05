@@ -2,35 +2,35 @@ from app.models.session import Session, Feedback
 from app.models.report import Report, CategoryScore
 from app.services.groq_service import call_groq_json
 from collections import Counter
-from typing import List
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 async def generate_report(session: Session) -> Report:
-    feedbacks = session.feedbacks
-    if not feedbacks:
+    feedback_by_qid = {f.question_id: f for f in session.feedbacks}
+    answer_by_qid = {a.question_id: a for a in session.answers}
+    answered_questions = [q for q in session.questions if q.id in feedback_by_qid]
+
+    if not answered_questions:
         return _empty_report(session)
+
+    feedbacks = [feedback_by_qid[q.id] for q in answered_questions]
 
     scores = [f.score for f in feedbacks]
     overall = round(sum(scores) / len(scores), 1) if scores else 0
 
     technical_feedbacks = [
-        f for f, q in zip(feedbacks, session.questions)
+        feedback_by_qid[q.id] for q in answered_questions
         if str(q.category.value) == "technical"
     ]
     behavioral_feedbacks = [
-        f for f, q in zip(feedbacks, session.questions)
+        feedback_by_qid[q.id] for q in answered_questions
         if str(q.category.value) in ("behavioral", "scenario")
     ]
 
     tech_score = _avg([f.score for f in technical_feedbacks]) if technical_feedbacks else overall
     comm_score = _avg([f.score for f in behavioral_feedbacks]) if behavioral_feedbacks else overall
-
-    all_weaknesses = []
-    for f in feedbacks:
-        all_weaknesses.extend(f.weaknesses)
 
     sentiment_counts = Counter(f.sentiment for f in feedbacks if f.sentiment)
     intent_counts = Counter(f.intent for f in feedbacks if f.intent)
@@ -38,7 +38,8 @@ async def generate_report(session: Session) -> Report:
     dominant_intent = intent_counts.most_common(1)[0][0] if intent_counts else "not detected"
 
     topic_lines = []
-    for q, f in zip(session.questions, feedbacks):
+    for q in answered_questions:
+        f = feedback_by_qid[q.id]
         if f.weaknesses:
             topic_lines.append(f"- [{q.category.value}] {q.text[:80]}: {', '.join(f.weaknesses[:2])}")
 
@@ -47,7 +48,7 @@ async def generate_report(session: Session) -> Report:
 Job Role: {session.job_role}
 Overall Score: {overall}/10
 Total Questions: {len(session.questions)}
-Answered Questions: {len(session.answers)}
+Answered Questions: {len(answered_questions)}
 Dominant emotional sentiment detected across answers: {dominant_sentiment} (distribution: {dict(sentiment_counts)})
 Dominant intent detected across answers: {dominant_intent} (distribution: {dict(intent_counts)})
 Per-question weaknesses:
@@ -82,12 +83,14 @@ Scoring guide for hiring_recommendation:
         hiring_rec = "Maybe"
 
     question_breakdown = []
-    for q, a, f in zip(session.questions, session.answers, feedbacks):
+    for q in answered_questions:
+        f = feedback_by_qid[q.id]
+        a = answer_by_qid.get(q.id)
         question_breakdown.append({
             "question": q.text,
             "category": q.category.value,
             "difficulty": q.difficulty.value,
-            "answer": a.text,
+            "answer": a.text if a else "",
             "score": f.score,
             "correctness": f.correctness,
             "sentiment": f.sentiment,
@@ -117,7 +120,7 @@ Scoring guide for hiring_recommendation:
         overall_intent=ai_data.get("overall_intent", dominant_intent),
         question_breakdown=question_breakdown,
         total_questions=len(session.questions),
-        completed_questions=len(session.answers),
+        completed_questions=len(answered_questions),
         hiring_recommendation=hiring_rec,
     )
 
@@ -147,7 +150,7 @@ def _empty_report(session):
         overall_sentiment="",
         overall_intent="",
         question_breakdown=[],
-        total_questions=0,
+        total_questions=len(session.questions),
         completed_questions=0,
         hiring_recommendation=None,
     )
