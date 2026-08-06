@@ -99,9 +99,23 @@ export function InterviewerAvatar({ text, speaking, onSpeakEnd, thinking = false
     if (voices.length > 0) {
       doSpeak(voices);
     } else {
-      const handler = () => { doSpeak(synthRef.current!.getVoices()); };
+      let fired = false;
+      const handler = () => {
+        if (fired) return;
+        fired = true;
+        doSpeak(synthRef.current!.getVoices());
+      };
       synthRef.current.addEventListener("voiceschanged", handler);
-      return () => synthRef.current?.removeEventListener("voiceschanged", handler);
+      const fallbackTimer = setTimeout(() => {
+        if (fired) return;
+        fired = true;
+        synthRef.current?.removeEventListener("voiceschanged", handler);
+        doSpeak(synthRef.current!.getVoices());
+      }, 500);
+      return () => {
+        synthRef.current?.removeEventListener("voiceschanged", handler);
+        clearTimeout(fallbackTimer);
+      };
     }
   }, [speaking, text, stopSpeech, onSpeakEnd]);
 
