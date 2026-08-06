@@ -83,21 +83,22 @@ export default function Practice() {
     const questions: Question[] = session.questions;
     const current = questions[currentIndex];
     try {
-      const [fb, mlimResult] = await Promise.all([
-        evaluateAnswer({ session_id: session.session_id, question_id: current.id, question_text: current.text, question_category: current.category, question_difficulty: current.difficulty, answer_text: ans, job_role: session.job_role }),
-        mlim.analyze({ sessionId: session.session_id, questionId: current.id, questionText: current.text, answerText: ans, jobRole: session.job_role, faceSnapshot: faceData as Record<string, unknown> | null }),
-      ]);
+      const fb = await evaluateAnswer({ session_id: session.session_id, question_id: current.id, question_text: current.text, question_category: current.category, question_difficulty: current.difficulty, answer_text: ans, job_role: session.job_role });
       setFeedback(fb);
-      if (!mlimResult) {
-        toast({
-          title: "Analytics not captured",
-          description: "This answer's MLIM analysis couldn't be recorded, but your feedback is unaffected.",
-          variant: "warning",
-        });
-      }
       toast({ title: "Answer submitted", description: "Your feedback is ready.", variant: "success" });
       const fbText = `Score: ${fb.score} out of 10. ${fb.feedback || ""}`;
       speak(fbText.slice(0, 180));
+
+      mlim.analyze({ sessionId: session.session_id, questionId: current.id, questionText: current.text, answerText: ans, jobRole: session.job_role, faceSnapshot: faceData as Record<string, unknown> | null })
+        .then((mlimResult) => {
+          if (!mlimResult) {
+            toast({
+              title: "Analytics not captured",
+              description: "This answer's MLIM analysis couldn't be recorded, but your feedback is unaffected.",
+              variant: "warning",
+            });
+          }
+        });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Could not generate feedback.";
       setFeedbackError(message);
