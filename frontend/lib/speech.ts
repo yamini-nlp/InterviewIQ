@@ -6,8 +6,9 @@ export function unlockSpeechSynthesis(): void {
   try {
     const utterance = new SpeechSynthesisUtterance(" ");
     utterance.volume = 0;
+    utterance.onend = () => { unlocked = true; };
+    utterance.onerror = () => { unlocked = true; };
     window.speechSynthesis.speak(utterance);
-    window.speechSynthesis.cancel();
     unlocked = true;
   } catch {
   }
