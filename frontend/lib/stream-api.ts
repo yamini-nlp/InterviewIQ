@@ -1,6 +1,6 @@
 import { authorizedFetch } from "@/lib/mlim-api";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL;
+const BASE = "/api/proxy";
 
 export interface StreamCallbacks {
   onChunk: (text: string) => void;
