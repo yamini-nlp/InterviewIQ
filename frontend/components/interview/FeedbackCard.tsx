@@ -13,6 +13,7 @@ interface FeedbackCardProps {
   loading?: boolean;
   error?: string | null;
   onRetry?: () => void;
+  onSkip?: () => void;
 }
 
 function CollapsibleSection({
@@ -54,7 +55,7 @@ function CollapsibleSection({
   );
 }
 
-export function FeedbackCard({ feedback, loading = false, error = null, onRetry }: FeedbackCardProps) {
+export function FeedbackCard({ feedback, loading = false, error = null, onRetry, onSkip }: FeedbackCardProps) {
   if (loading) {
     return (
       <Card className="space-y-5 border-neutral-200">
