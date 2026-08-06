@@ -126,159 +126,238 @@ export function InterviewerAvatar({ text, speaking, onSpeakEnd, thinking = false
 
       if (now > nextGazeShiftRef.current) {
         nextGazeShiftRef.current = now + 1600 + Math.random() * 2200;
-        const wander = listening ? 0.25 : isSpeaking ? 0.4 : 0.8;
+        const wander = listening ? 0.2 : isSpeaking ? 0.32 : 0.6;
         gazeTargetRef.current = {
           x: (Math.random() * 2 - 1) * wander,
-          y: (Math.random() * 2 - 1) * wander * 0.5,
+          y: (Math.random() * 2 - 1) * wander * 0.4,
         };
       }
       gazeRef.current.x += (gazeTargetRef.current.x - gazeRef.current.x) * 0.06;
       gazeRef.current.y += (gazeTargetRef.current.y - gazeRef.current.y) * 0.06;
 
-      const breathing = 1 + Math.sin(now / 1400) * (isSpeaking ? 0.004 : 0.012);
-      const thinkingBob = thinking ? Math.sin(now / 260) * 2.5 : 0;
-      const tiltAmplitude = isSpeaking ? 0.012 : thinking ? 0.045 : 0.028;
-      const headTilt = Math.sin(now / 2600) * tiltAmplitude + Math.sin(now / 970) * (tiltAmplitude * 0.35);
+      const breathing = 1 + Math.sin(now / 1500) * (isSpeaking ? 0.003 : 0.008);
+      const thinkingBob = thinking ? Math.sin(now / 280) * 1.6 : 0;
+      const tiltAmplitude = isSpeaking ? 0.008 : thinking ? 0.03 : 0.018;
+      const headTilt = Math.sin(now / 2800) * tiltAmplitude + Math.sin(now / 1100) * (tiltAmplitude * 0.3);
 
       const cx = W / 2;
-      const cy = H / 2 - 10 + thinkingBob;
-      const r = Math.min(W, H) * 0.32 * breathing;
+      const cy = H / 2 - 6 + thinkingBob;
+      const r = Math.min(W, H) * 0.3 * breathing;
+
+      const bg = ctx.createRadialGradient(cx, cy - r * 0.2, r * 0.4, cx, H * 0.55, W * 0.75);
+      bg.addColorStop(0, "#20242f");
+      bg.addColorStop(1, "#0c0e14");
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, W, H);
 
       ctx.save();
       ctx.translate(cx, cy);
       ctx.rotate(headTilt);
       ctx.translate(-cx, -cy);
 
-      const grad = ctx.createRadialGradient(cx - r * 0.2, cy - r * 0.2, r * 0.1, cx, cy, r);
-      grad.addColorStop(0, "#2d2060");
-      grad.addColorStop(0.6, "#1a1440");
-      grad.addColorStop(1, "#0d0a26");
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.fill();
-
       if (isSpeaking) {
         ctx.save();
-        [1.15, 1.28, 1.42].forEach((scale, i) => {
-          ctx.globalAlpha = (0.35 - i * 0.1) * (0.6 + Math.sin(now / 300 + i) * 0.4);
-          ctx.strokeStyle = "rgba(108,99,255,0.35)";
-          ctx.lineWidth = 2;
+        [1.32, 1.46, 1.6].forEach((scale, i) => {
+          ctx.globalAlpha = (0.22 - i * 0.06) * (0.6 + Math.sin(now / 320 + i) * 0.4);
+          ctx.strokeStyle = "rgba(201,162,75,0.5)";
+          ctx.lineWidth = 1.2;
           ctx.beginPath();
-          ctx.arc(cx, cy, r * scale, 0, Math.PI * 2);
+          ctx.arc(cx, cy - r * 0.1, r * scale, 0, Math.PI * 2);
           ctx.stroke();
         });
         ctx.restore();
       } else if (listening) {
         ctx.save();
-        ctx.globalAlpha = 0.3 + Math.sin(now / 500) * 0.15;
-        ctx.strokeStyle = "rgba(52,211,153,0.5)";
-        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.28 + Math.sin(now / 550) * 0.12;
+        ctx.strokeStyle = "rgba(120,196,164,0.55)";
+        ctx.lineWidth = 1.4;
         ctx.beginPath();
-        ctx.arc(cx, cy, r * 1.18, 0, Math.PI * 2);
+        ctx.arc(cx, cy - r * 0.1, r * 1.36, 0, Math.PI * 2);
         ctx.stroke();
         ctx.restore();
       } else if (thinking) {
         ctx.save();
         for (let i = 0; i < 3; i++) {
-          const phase = (now / 260 + i * 0.6) % (Math.PI * 2);
-          const dotY = cy + r * 1.3 + Math.sin(phase) * 3;
-          ctx.globalAlpha = 0.4 + Math.sin(phase) * 0.3;
-          ctx.fillStyle = "#a78bfa";
+          const phase = (now / 280 + i * 0.6) % (Math.PI * 2);
+          const dotY = cy + r * 1.55 + Math.sin(phase) * 2.5;
+          ctx.globalAlpha = 0.35 + Math.sin(phase) * 0.25;
+          ctx.fillStyle = "#c9a24b";
           ctx.beginPath();
-          ctx.arc(cx + (i - 1) * r * 0.22, dotY, r * 0.045, 0, Math.PI * 2);
+          ctx.arc(cx + (i - 1) * r * 0.2, dotY, r * 0.035, 0, Math.PI * 2);
           ctx.fill();
         }
         ctx.restore();
       }
 
-      const eyeY = cy - r * 0.18;
-      const eyeSpacing = r * 0.34;
-      const eyeR = r * 0.1;
-      const gazeDx = gazeRef.current.x * eyeR * 0.35;
-      const gazeDy = gazeRef.current.y * eyeR * 0.35;
+      const shoulderY = cy + r * 1.62;
+      const shoulderW = r * 1.85;
+      const blazerGrad = ctx.createLinearGradient(cx - shoulderW, shoulderY, cx + shoulderW, shoulderY + r * 0.9);
+      blazerGrad.addColorStop(0, "#1b2233");
+      blazerGrad.addColorStop(0.5, "#232c42");
+      blazerGrad.addColorStop(1, "#161c2b");
+      ctx.fillStyle = blazerGrad;
+      ctx.beginPath();
+      ctx.moveTo(cx - shoulderW, H + 20);
+      ctx.quadraticCurveTo(cx - shoulderW, shoulderY, cx - r * 0.55, cy + r * 0.98);
+      ctx.quadraticCurveTo(cx, cy + r * 1.18, cx + r * 0.55, cy + r * 0.98);
+      ctx.quadraticCurveTo(cx + shoulderW, shoulderY, cx + shoulderW, H + 20);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = "#f4ead9";
+      ctx.beginPath();
+      ctx.moveTo(cx - r * 0.24, cy + r * 1.02);
+      ctx.lineTo(cx, cy + r * 1.5);
+      ctx.lineTo(cx + r * 0.24, cy + r * 1.02);
+      ctx.quadraticCurveTo(cx, cy + r * 1.16, cx - r * 0.24, cy + r * 1.02);
+      ctx.fill();
+
+      ctx.strokeStyle = "#c9a24b";
+      ctx.lineWidth = r * 0.03;
+      ctx.beginPath();
+      ctx.moveTo(cx - r * 0.06, cy + r * 1.08);
+      ctx.lineTo(cx - r * 0.11, cy + r * 1.42);
+      ctx.lineTo(cx, cy + r * 1.58);
+      ctx.lineTo(cx + r * 0.11, cy + r * 1.42);
+      ctx.lineTo(cx + r * 0.06, cy + r * 1.08);
+      ctx.stroke();
+
+      const neckGrad = ctx.createLinearGradient(cx, cy + r * 0.6, cx, cy + r * 1.1);
+      neckGrad.addColorStop(0, "#e8c5a8");
+      neckGrad.addColorStop(1, "#d3a988");
+      ctx.fillStyle = neckGrad;
+      ctx.beginPath();
+      ctx.moveTo(cx - r * 0.22, cy + r * 0.62);
+      ctx.lineTo(cx - r * 0.26, cy + r * 1.05);
+      ctx.lineTo(cx + r * 0.26, cy + r * 1.05);
+      ctx.lineTo(cx + r * 0.22, cy + r * 0.62);
+      ctx.closePath();
+      ctx.fill();
+
+      const faceGrad = ctx.createRadialGradient(cx - r * 0.25, cy - r * 0.3, r * 0.15, cx, cy, r * 1.05);
+      faceGrad.addColorStop(0, "#f2d3b6");
+      faceGrad.addColorStop(0.55, "#e6bb98");
+      faceGrad.addColorStop(1, "#c99b78");
+      ctx.fillStyle = faceGrad;
+      ctx.beginPath();
+      ctx.moveTo(cx - r * 0.72, cy - r * 0.35);
+      ctx.quadraticCurveTo(cx - r * 0.78, cy + r * 0.35, cx - r * 0.42, cy + r * 0.78);
+      ctx.quadraticCurveTo(cx, cy + r * 1.02, cx + r * 0.42, cy + r * 0.78);
+      ctx.quadraticCurveTo(cx + r * 0.78, cy + r * 0.35, cx + r * 0.72, cy - r * 0.35);
+      ctx.quadraticCurveTo(cx + r * 0.62, cy - r * 0.92, cx, cy - r * 1.02);
+      ctx.quadraticCurveTo(cx - r * 0.62, cy - r * 0.92, cx - r * 0.72, cy - r * 0.35);
+      ctx.closePath();
+      ctx.fill();
+
+      const hairGrad = ctx.createLinearGradient(cx - r * 0.8, cy - r * 1.1, cx + r * 0.8, cy - r * 0.2);
+      hairGrad.addColorStop(0, "#171a22");
+      hairGrad.addColorStop(1, "#2a2f3d");
+      ctx.fillStyle = hairGrad;
+      ctx.beginPath();
+      ctx.moveTo(cx - r * 0.78, cy - r * 0.28);
+      ctx.quadraticCurveTo(cx - r * 0.9, cy - r * 1.05, cx - r * 0.18, cy - r * 1.28);
+      ctx.quadraticCurveTo(cx + r * 0.55, cy - r * 1.32, cx + r * 0.82, cy - r * 0.85);
+      ctx.quadraticCurveTo(cx + r * 0.9, cy - r * 0.5, cx + r * 0.7, cy - r * 0.32);
+      ctx.quadraticCurveTo(cx + r * 0.5, cy - r * 0.68, cx + r * 0.1, cy - r * 0.78);
+      ctx.quadraticCurveTo(cx - r * 0.35, cy - r * 0.82, cx - r * 0.58, cy - r * 0.5);
+      ctx.quadraticCurveTo(cx - r * 0.68, cy - r * 0.36, cx - r * 0.78, cy - r * 0.28);
+      ctx.closePath();
+      ctx.fill();
+
+      const eyeY = cy - r * 0.06;
+      const eyeSpacing = r * 0.33;
+      const eyeW = r * 0.16;
+      const eyeH = r * 0.09;
+      const gazeDx = gazeRef.current.x * eyeW * 0.3;
+      const gazeDy = gazeRef.current.y * eyeH * 0.3;
 
       [-1, 1].forEach((side) => {
         const ex = cx + side * eyeSpacing;
-        const browY = eyeY - eyeR * 1.9 - browRaiseRef.current * eyeR * 0.9;
-        const browTilt = thinking ? side * 0.22 : 0;
+        const browY = eyeY - eyeH * 2.1 - browRaiseRef.current * eyeH * 0.8;
+        const browTilt = thinking ? side * 0.18 : 0.08 * -side;
         ctx.save();
         ctx.translate(ex, browY);
         ctx.rotate(browTilt);
-        ctx.strokeStyle = "rgba(167,139,250,0.75)";
-        ctx.lineWidth = eyeR * 0.32;
+        ctx.strokeStyle = "#3a2a1e";
+        ctx.lineWidth = eyeH * 0.4;
         ctx.lineCap = "round";
         ctx.beginPath();
-        ctx.moveTo(-eyeR * 0.62, 0);
-        ctx.quadraticCurveTo(0, -eyeR * 0.32, eyeR * 0.62, 0);
+        ctx.moveTo(-eyeW * 0.65, 0);
+        ctx.quadraticCurveTo(0, -eyeH * 0.5, eyeW * 0.65, -eyeH * 0.1);
         ctx.stroke();
         ctx.restore();
 
-        const eg = ctx.createRadialGradient(ex - 1, eyeY - 1, 1, ex, eyeY, eyeR);
-        eg.addColorStop(0, "#a78bfa");
-        eg.addColorStop(1, "#6c63ff");
-        ctx.fillStyle = eg;
+        ctx.fillStyle = "#fbf6ee";
         ctx.beginPath();
-        ctx.ellipse(ex, eyeY, eyeR, eyeR * blinkStateRef.current, 0, 0, Math.PI * 2);
+        ctx.ellipse(ex, eyeY, eyeW, eyeH * Math.max(blinkStateRef.current, 0.06), 0, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.fillStyle = "#0d0a26";
+        const irisGrad = ctx.createRadialGradient(ex + gazeDx, eyeY + gazeDy, 1, ex + gazeDx, eyeY + gazeDy, eyeH * 0.85);
+        irisGrad.addColorStop(0, "#5b7a99");
+        irisGrad.addColorStop(1, "#2f4053");
+        ctx.fillStyle = irisGrad;
         ctx.beginPath();
-        ctx.ellipse(ex + gazeDx, eyeY + gazeDy, eyeR * 0.48, eyeR * 0.48 * blinkStateRef.current, 0, 0, Math.PI * 2);
+        ctx.ellipse(ex + gazeDx, eyeY + gazeDy, eyeH * 0.85, eyeH * 0.85 * blinkStateRef.current, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = "rgba(255,255,255,0.7)";
-        ctx.beginPath();
-        ctx.arc(ex + gazeDx - eyeR * 0.25, eyeY + gazeDy - eyeR * 0.25, eyeR * 0.18 * blinkStateRef.current, 0, Math.PI * 2);
-        ctx.fill();
-      });
 
-      const mouthY = cy + r * 0.3;
-      const mouthW = r * 0.42;
+        ctx.fillStyle = "#171a22";
+        ctx.beginPath();
+        ctx.ellipse(ex + gazeDx, eyeY + gazeDy, eyeH * 0.42, eyeH * 0.42 * blinkStateRef.current, 0, 0, Math.PI * 2);
+        ctx.fill();
 
-      if (mouthOpenRef.current > 0.12) {
-        const mouthH = r * 0.18 * (0.2 + mouthOpenRef.current * 0.8);
-        ctx.fillStyle = "#0d0a26";
-        ctx.beginPath();
-        ctx.ellipse(cx, mouthY, mouthW, mouthH + r * 0.04, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#1a0a2e";
-        ctx.beginPath();
-        ctx.ellipse(cx, mouthY, mouthW * 0.88, mouthH * 0.88, 0, 0, Math.PI * 2);
-        ctx.fill();
         ctx.fillStyle = "rgba(255,255,255,0.85)";
         ctx.beginPath();
-        ctx.ellipse(cx, mouthY - mouthH * 0.3, mouthW * 0.55, mouthH * 0.38, 0, 0, Math.PI);
+        ctx.arc(ex + gazeDx - eyeH * 0.22, eyeY + gazeDy - eyeH * 0.22, eyeH * 0.16 * blinkStateRef.current, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = "#3a2a1e";
+        ctx.lineWidth = eyeH * 0.16;
+        ctx.beginPath();
+        ctx.ellipse(ex, eyeY, eyeW, eyeH * Math.max(blinkStateRef.current, 0.06), 0, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+
+      ctx.strokeStyle = "rgba(120,80,60,0.35)";
+      ctx.lineWidth = r * 0.02;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy + r * 0.06);
+      ctx.quadraticCurveTo(cx + r * 0.05, cy + r * 0.2, cx, cy + r * 0.26);
+      ctx.stroke();
+
+      const mouthY = cy + r * 0.44;
+      const mouthW = r * 0.28;
+
+      if (mouthOpenRef.current > 0.12) {
+        const mouthH = r * 0.12 * (0.2 + mouthOpenRef.current * 0.8);
+        ctx.fillStyle = "#7a3b3b";
+        ctx.beginPath();
+        ctx.ellipse(cx, mouthY, mouthW, mouthH + r * 0.02, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#4a2020";
+        ctx.beginPath();
+        ctx.ellipse(cx, mouthY, mouthW * 0.86, mouthH * 0.86, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "rgba(255,250,244,0.92)";
+        ctx.beginPath();
+        ctx.ellipse(cx, mouthY - mouthH * 0.32, mouthW * 0.5, mouthH * 0.32, 0, 0, Math.PI);
         ctx.fill();
       } else {
-        const moodCurve = thinking ? -0.1 : listening ? 0.55 : 0.4;
-        const curveDepth = r * 0.14 * moodCurve;
-        ctx.strokeStyle = "#0d0a26";
-        ctx.lineWidth = r * 0.045;
+        const moodCurve = thinking ? -0.08 : listening ? 0.4 : 0.3;
+        const curveDepth = r * 0.1 * moodCurve;
+        ctx.strokeStyle = "#8a4b48";
+        ctx.lineWidth = r * 0.032;
         ctx.lineCap = "round";
         ctx.beginPath();
-        ctx.moveTo(cx - mouthW * 0.7, mouthY);
-        ctx.quadraticCurveTo(cx, mouthY + curveDepth, cx + mouthW * 0.7, mouthY);
+        ctx.moveTo(cx - mouthW * 0.75, mouthY);
+        ctx.quadraticCurveTo(cx, mouthY + curveDepth, cx + mouthW * 0.75, mouthY);
         ctx.stroke();
       }
 
-      const hg = ctx.createLinearGradient(cx - r, cy - r, cx + r * 0.3, cy - r * 1.1);
-      hg.addColorStop(0, "#3730a3");
-      hg.addColorStop(1, "#6c63ff");
-      ctx.fillStyle = hg;
+      ctx.strokeStyle = "rgba(201,162,75,0.28)";
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(cx, cy, r, Math.PI * 1.1, Math.PI * 1.9);
-      ctx.quadraticCurveTo(cx + r * 0.1, cy - r * 1.25, cx - r * 0.6, cy - r * 1.05);
-      ctx.fill();
-      ctx.fillStyle = "#1e1b4b";
-      ctx.beginPath();
-      ctx.ellipse(cx, cy + r * 0.82, r * 0.55, r * 0.28, 0, 0, Math.PI);
-      ctx.fill();
-      ctx.fillStyle = "#312e81";
-      ctx.fillRect(cx - r * 0.38, cy + r * 0.9, r * 0.76, r * 0.4);
-      ctx.fillStyle = "#6c63ff";
-      ctx.beginPath();
-      ctx.roundRect(cx - r * 0.38, cy + r * 0.9, r * 0.76, r * 0.12, 4);
-      ctx.fill();
+      ctx.arc(cx, cy - r * 0.02, r * 1.18, 0, Math.PI * 2);
+      ctx.stroke();
 
       ctx.restore();
       animFrameRef.current = requestAnimationFrame(draw);
@@ -288,36 +367,36 @@ export function InterviewerAvatar({ text, speaking, onSpeakEnd, thinking = false
   }, [isSpeaking, thinking, listening]);
 
   return (
-    <div className="relative w-full h-full flex items-center justify-center bg-night-800 rounded-2xl overflow-hidden">
+    <div className="relative w-full h-full flex items-center justify-center bg-[#0c0e14] rounded-2xl overflow-hidden border border-[#c9a24b]/10">
       <canvas ref={canvasRef} width={280} height={280} className="w-full h-full object-contain" />
       {isSpeaking && (
         <div
-          className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-primary-500/20 border border-primary-500/30 px-2 py-1 rounded-full"
+          className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-[#c9a24b]/10 border border-[#c9a24b]/25 px-2.5 py-1 rounded-full backdrop-blur-sm"
           role="status"
           aria-live="polite"
         >
           {[0, 1, 2].map((i) => (
-            <div key={i} className="w-1 rounded-full bg-primary-400" style={{ height: "12px", animation: `sb 0.6s ease-in-out ${i * 0.15}s infinite alternate` }} />
+            <div key={i} className="w-1 rounded-full bg-[#c9a24b]" style={{ height: "10px", animation: `sb 0.6s ease-in-out ${i * 0.15}s infinite alternate` }} />
           ))}
-          <span className="text-[9px] text-primary-300 font-mono ml-1">SPEAKING</span>
+          <span className="text-[9px] tracking-[0.14em] text-[#e8cf9a] font-serif ml-1">SPEAKING</span>
         </div>
       )}
       {thinking && !isSpeaking && (
         <div
-          className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-white/5 border border-white/10 px-2 py-1 rounded-full"
+          className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-white/5 border border-white/10 px-2.5 py-1 rounded-full backdrop-blur-sm"
           role="status"
           aria-live="polite"
         >
-          <span className="text-[9px] text-neutral-400 font-mono">THINKING</span>
+          <span className="text-[9px] tracking-[0.14em] text-neutral-300 font-serif">THINKING</span>
         </div>
       )}
       {listening && !isSpeaking && !thinking && (
         <div
-          className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-green-500/10 border border-green-500/20 px-2 py-1 rounded-full"
+          className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-[#78c4a4]/10 border border-[#78c4a4]/25 px-2.5 py-1 rounded-full backdrop-blur-sm"
           role="status"
           aria-live="polite"
         >
-          <span className="text-[9px] text-green-400 font-mono">LISTENING</span>
+          <span className="text-[9px] tracking-[0.14em] text-[#a7dcc3] font-serif">LISTENING</span>
         </div>
       )}
       <style>{`@keyframes sb { from { transform: scaleY(0.3); } to { transform: scaleY(1); } }`}</style>
