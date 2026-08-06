@@ -9,7 +9,7 @@ import {
   IFLOutput,
 } from "@/types/mlim";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL;
+const BASE = "/api/proxy";
 
 export type MLIMLayerName = "asl" | "pel" | "gstl" | "ifl";
 export type MLIMLayerData = ASLOutput | PELOutput | GSTLOutput | IFLOutput;
