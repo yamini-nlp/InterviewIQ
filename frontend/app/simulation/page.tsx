@@ -92,16 +92,7 @@ export default function Simulation() {
     setAnswer("");
 
     try {
-      const mlimPromise = mlim.analyze({
-        sessionId: session.session_id,
-        questionId: current.id,
-        questionText: current.text,
-        answerText: answerToSubmit,
-        jobRole: session.job_role,
-        faceSnapshot: faceData,
-      });
-
-      const respondPromise = simulateRespond({
+      const { response } = await simulateRespond({
         session_id: session.session_id,
         question_id: current.id,
         question_text: current.text,
@@ -109,19 +100,26 @@ export default function Simulation() {
         interviewer_style: "professional",
       });
 
-      const [mlimResult, { response }] = await Promise.all([mlimPromise, respondPromise]);
-
-      if (!mlimResult) {
-        toast({
-          title: "Analytics not captured",
-          description: "This answer's MLIM analysis couldn't be recorded, but your interview continues normally.",
-          variant: "warning",
-        });
-      }
-
       setMessages((m) => [...m, { role: "ai", text: response }]);
       setAnswered(true);
       speakText(response);
+
+      mlim.analyze({
+        sessionId: session.session_id,
+        questionId: current.id,
+        questionText: current.text,
+        answerText: answerToSubmit,
+        jobRole: session.job_role,
+        faceSnapshot: faceData,
+      }).then((mlimResult) => {
+        if (!mlimResult) {
+          toast({
+            title: "Analytics not captured",
+            description: "This answer's MLIM analysis couldn't be recorded, but your interview continues normally.",
+            variant: "warning",
+          });
+        }
+      });
     } catch (e) {
       const fallback = "Noted. Thank you for your response.";
       setMessages((m) => [...m, { role: "ai", text: fallback }]);
