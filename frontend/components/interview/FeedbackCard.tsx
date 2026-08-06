@@ -82,7 +82,7 @@ export function FeedbackCard({ feedback, loading = false, error = null, onRetry,
   if (error) {
     return (
       <Card className="border-neutral-200">
-        <ErrorState message={error} onRetry={onRetry} retryLabel="Retry feedback" />
+        <ErrorState message={error} onRetry={onRetry} retryLabel="Retry feedback" onSkip={onSkip} skipLabel="Skip this question" />
       </Card>
     );
   }
