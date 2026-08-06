@@ -14,7 +14,8 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/hooks/useToast";
 import { useMLIM } from "@/hooks/useMLIM";
 import { useCheatingDetection } from "@/hooks/useCheatingDetection";
-import { Loader2, ChevronRight, AlertTriangle, Send, Keyboard, Mic, Volume2, SkipForward } from "lucide-react";
+import { unlockSpeechSynthesis } from "@/lib/speech";
+import { Loader2, ChevronRight, AlertTriangle, Send, Keyboard, Mic, Volume2, SkipForward, Play } from "lucide-react";
 
 interface Message {
   role: "ai" | "user";
@@ -41,6 +42,7 @@ export default function Simulation() {
   const [speakEnabled, setSpeakEnabled] = useState(true);
   const [faceData, setFaceData] = useState<any>(null);
   const [timerActive, setTimerActive] = useState(false);
+  const [started, setStarted] = useState(false);
 
   const audioStreamRef = useRef<MediaStream | null>(null);
   const videoStreamRef = useRef<MediaStream | null>(null);
@@ -51,8 +53,14 @@ export default function Simulation() {
     const s = loadSession();
     if (!s) { router.push("/setup"); return; }
     setSession(s);
-    const firstQ = s.questions?.[0]?.text || "";
-    const fullIntro = `Welcome. I'll be conducting your ${s.job_role} interview today. Let's begin.\n\n${firstQ}`;
+  }, []);
+
+  const handleBegin = useCallback(() => {
+    if (!session) return;
+    unlockSpeechSynthesis();
+    setStarted(true);
+    const firstQ = session.questions?.[0]?.text || "";
+    const fullIntro = `Welcome. I'll be conducting your ${session.job_role} interview today. Let's begin.\n\n${firstQ}`;
     setMessages([{ role: "ai", text: fullIntro }]);
     if (speakEnabled) {
       setAvatarText(fullIntro);
@@ -60,7 +68,7 @@ export default function Simulation() {
     } else {
       setTimerActive(true);
     }
-  }, []);
+  }, [session, speakEnabled]);
 
   const handleAvatarSpeakEnd = useCallback(() => {
     setAvatarSpeaking(false);
@@ -197,6 +205,18 @@ export default function Simulation() {
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-error-500/90 backdrop-blur-sm text-white px-4 py-2.5 rounded-xl shadow-lg border border-error-400/50 animate-fade-in">
           <AlertTriangle size={16} />
           <span className="text-sm font-medium">{cheating.warningMessage}</span>
+        </div>
+      )}
+
+      {!started && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center gap-5 text-center px-6">
+          <p className="text-2xl font-bold text-white">Ready to begin?</p>
+          <p className="text-neutral-400 text-sm max-w-sm">
+            Your interviewer will read each question out loud. Click below to start — this also enables audio in your browser.
+          </p>
+          <Button size="lg" onClick={handleBegin} className="active:scale-95">
+            <Play size={16} /> Begin Interview
+          </Button>
         </div>
       )}
 

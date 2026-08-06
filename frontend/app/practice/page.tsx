@@ -13,9 +13,9 @@ import { AudioRecorder } from "@/components/interview/AudioRecorder";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/hooks/useToast";
-import { useMLIM } from "@/hooks/useMLIM";
 import { useCheatingDetection } from "@/hooks/useCheatingDetection";
-import { ChevronRight, AlertTriangle, Keyboard, Mic, Volume2, VolumeX, SkipForward } from "lucide-react";
+import { unlockSpeechSynthesis } from "@/lib/speech";
+import { ChevronRight, AlertTriangle, Keyboard, Mic, Volume2, VolumeX, SkipForward, Play } from "lucide-react";
 
 type InputMode = "text" | "voice";
 
@@ -37,6 +37,7 @@ export default function Practice() {
   const [ttsEnabled, setTtsEnabled] = useState(true);
   const [faceData, setFaceData] = useState<FaceDetectionData | null>(null);
   const [skipped, setSkipped] = useState(false);
+  const [started, setStarted] = useState(false);
 
   const micStreamRef = useRef<MediaStream | null>(null);
   const videoStreamRef = useRef<MediaStream | null>(null);
@@ -48,11 +49,17 @@ export default function Practice() {
     const s = loadSession();
     if (!s) { router.push("/setup"); return; }
     setSession(s);
-    const q = s.questions?.[0]?.text || "";
-    const intro = `Welcome. Let's begin your ${s.job_role} practice session.\n\n${q}`;
+  }, []);
+
+  const handleBegin = useCallback(() => {
+    if (!session) return;
+    unlockSpeechSynthesis();
+    setStarted(true);
+    const q = session.questions?.[0]?.text || "";
+    const intro = `Welcome. Let's begin your ${session.job_role} practice session.\n\n${q}`;
     if (ttsEnabled) { setAvatarText(intro); setAvatarSpeaking(true); }
     else setTimerActive(true);
-  }, []);
+  }, [session, ttsEnabled]);
 
   const speak = useCallback((text: string) => {
     if (!ttsEnabled) { setTimerActive(true); return; }
@@ -280,7 +287,7 @@ export default function Practice() {
                   </div>
                 ) : (
                   <div className="px-4 py-3 space-y-3">
-                    <FeedbackCard feedback={feedback} loading={loading} error={feedbackError} onRetry={retryFeedback} />
+                    <FeedbackCard feedback={feedback} loading={loading} error={feedbackError} onRetry={retryFeedback} onSkip={handleSkip} />
                     {feedback && (
                       <Button
                         onClick={handleNext}
