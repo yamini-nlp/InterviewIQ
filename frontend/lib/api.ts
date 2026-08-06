@@ -51,20 +51,38 @@ export async function transcribeAudio(blob: Blob): Promise<{ transcript: string 
   const form = new FormData();
   form.append("audio", blob, "audio.webm");
 
-  let res = await fetch(`${BASE}/api/questions/transcribe`, {
-    method: "POST",
-    body: form,
-    credentials: "include",
-  });
+  const doFetch = () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
+    return fetch(`${BASE}/api/questions/transcribe`, {
+      method: "POST",
+      body: form,
+      credentials: "include",
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timeoutId));
+  };
+
+  let res: Response;
+  try {
+    res = await doFetch();
+  } catch (e) {
+    if (e instanceof DOMException && e.name === "AbortError") {
+      throw new Error("Transcription timed out. Please try again.");
+    }
+    throw new Error("Transcription failed");
+  }
 
   if (res.status === 401) {
     const refreshed = await refreshAccessToken();
     if (refreshed) {
-      res = await fetch(`${BASE}/api/questions/transcribe`, {
-        method: "POST",
-        body: form,
-        credentials: "include",
-      });
+      try {
+        res = await doFetch();
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") {
+          throw new Error("Transcription timed out. Please try again.");
+        }
+        throw new Error("Transcription failed");
+      }
     }
   }
 
