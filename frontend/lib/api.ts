@@ -1,6 +1,6 @@
 import { refreshAccessToken } from "@/lib/auth";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL;
+const BASE = "/api/proxy";
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const makeRequest = async () => {
