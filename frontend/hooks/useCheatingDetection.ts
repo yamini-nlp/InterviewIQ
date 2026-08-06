@@ -143,7 +143,7 @@ export function useCheatingDetection(
     if (toFlush.length === 0) return;
     pendingEventsRef.current = [];
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/integrity/events`, {
+      await fetch("/api/proxy/api/integrity/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
