@@ -1,4 +1,4 @@
-import { AlertCircle, LucideIcon, RotateCcw } from "lucide-react";
+import { AlertCircle, LucideIcon, RotateCcw, SkipForward } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 
@@ -7,6 +7,8 @@ export interface ErrorStateProps {
   message: string;
   onRetry?: () => void;
   retryLabel?: string;
+  onSkip?: () => void;
+  skipLabel?: string;
   className?: string;
 }
 
@@ -15,6 +17,8 @@ export function ErrorState({
   message,
   onRetry,
   retryLabel = "Try again",
+  onSkip,
+  skipLabel = "Skip this question",
   className,
 }: ErrorStateProps) {
   return (
@@ -23,10 +27,19 @@ export function ErrorState({
         <Icon size={22} aria-hidden="true" />
       </div>
       <p className="text-sm font-medium text-neutral-900">{message}</p>
-      {onRetry && (
-        <Button variant="outline" size="sm" className="mt-5" leftIcon={<RotateCcw size={14} />} onClick={onRetry}>
-          {retryLabel}
-        </Button>
+      {(onRetry || onSkip) && (
+        <div className="mt-5 flex items-center gap-2">
+          {onRetry && (
+            <Button variant="outline" size="sm" leftIcon={<RotateCcw size={14} />} onClick={onRetry}>
+              {retryLabel}
+            </Button>
+          )}
+          {onSkip && (
+            <Button variant="outline" size="sm" leftIcon={<SkipForward size={14} />} onClick={onSkip}>
+              {skipLabel}
+            </Button>
+          )}
+        </div>
       )}
     </div>
   );
