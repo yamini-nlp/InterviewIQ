@@ -13,6 +13,7 @@ import { AudioRecorder } from "@/components/interview/AudioRecorder";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/hooks/useToast";
+import { useMLIM } from "@/hooks/useMLIM";
 import { useCheatingDetection } from "@/hooks/useCheatingDetection";
 import { unlockSpeechSynthesis } from "@/lib/speech";
 import { ChevronRight, AlertTriangle, Keyboard, Mic, Volume2, VolumeX, SkipForward, Play } from "lucide-react";
