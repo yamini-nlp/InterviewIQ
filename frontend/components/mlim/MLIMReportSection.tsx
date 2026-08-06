@@ -36,10 +36,10 @@ function trajectoryIcon(t: string) {
 }
 
 const FAILURE_MODE_DESCRIPTIONS: Record<string, string> = {
-  affective_masking: "Your surface expressions didn't match your underlying intent in some answers — the system detected you may have presented positively while experiencing uncertainty.",
-  pragmatic_inversion: "Some answers used irony or sarcasm, where literal sentiment was inverted by pragmatic context.",
-  temporal_goal_drift: "Your goals appeared to shift during the session, suggesting changing confidence or strategy.",
-  role_ambiguity: "Some answers carried multiple simultaneous speech act roles, creating intent ambiguity.",
+  topic_drift: "One or more answers were classified as off-topic relative to the question that was asked.",
+  unresolved_sarcasm_ambiguity: "Literal and pragmatic sentiment diverged in some answers, but the intent classifier did not converge on sarcasm as the explanation.",
+  goal_intent_mismatch: "Session-level goal drift was detected while the turn-level intent remained ambiguous, suggesting a mismatch between your apparent goal and what you were actually communicating.",
+  high_ambiguity: "The intent distribution was close to uniform across candidate labels in some answers, meaning the system could not confidently identify what you meant.",
 };
 
 const INTENT_DESCRIPTIONS: Record<string, string> = {
