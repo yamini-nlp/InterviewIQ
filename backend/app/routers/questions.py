@@ -27,13 +27,14 @@ async def generate(request: GenerateQuestionsRequest, current_user: dict = Depen
             request.num_scenario,
         )
         session_id = str(uuid.uuid4())
+        requested_mode = request.mode if request.mode in (SessionMode.practice.value, SessionMode.simulation.value) else SessionMode.practice.value
         session_data = {
             "id": session_id,
             "user_id": current_user["id"],
             "job_role": request.job_role,
             "job_description": request.job_description,
             "resume_text": request.resume_text or "",
-            "mode": SessionMode.practice.value,
+            "mode": requested_mode,
             "questions": [q.model_dump() for q in questions],
             "answers": [],
             "feedbacks": [],
