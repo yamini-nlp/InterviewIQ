@@ -129,15 +129,6 @@ async def generate(session_id: str, current_user: dict = Depends(get_current_use
 
         if db is not None:
             try:
-                await db.sessions.update_one(
-                    {"id": session_id, "user_id": current_user["id"]},
-                    {"$set": {
-                        "overall_score": report.overall_score,
-                        "completed_at": datetime.now(timezone.utc).isoformat(),
-                        "feedbacks": [f.model_dump() for f in session.feedbacks],
-                        "answers": [a.model_dump() for a in session.answers],
-                    }},
-                )
                 existing = await db.reports.find_one({"session_id": session_id, "user_id": current_user["id"]})
                 if existing:
                     await db.reports.replace_one(
@@ -148,7 +139,28 @@ async def generate(session_id: str, current_user: dict = Depends(get_current_use
                     await db.reports.insert_one(report.model_dump())
             except Exception as db_error:
                 metrics.record_mongo_error(operation="reports_save")
-                logger.warning(f"DB save skipped for report {session_id}: {db_error}")
+                logger.error(
+                    f"Report save failed for session {session_id}, not marking session complete: {db_error}",
+                    exc_info=True,
+                )
+                raise HTTPException(
+                    status_code=500,
+                    detail="Your report was generated but could not be saved. Please try again.",
+                )
+
+            try:
+                await db.sessions.update_one(
+                    {"id": session_id, "user_id": current_user["id"]},
+                    {"$set": {
+                        "overall_score": report.overall_score,
+                        "completed_at": datetime.now(timezone.utc).isoformat(),
+                        "feedbacks": [f.model_dump() for f in session.feedbacks],
+                        "answers": [a.model_dump() for a in session.answers],
+                    }},
+                )
+            except Exception as db_error:
+                metrics.record_mongo_error(operation="sessions_update")
+                logger.warning(f"DB save skipped for session completion {session_id}: {db_error}")
 
         return report.model_dump()
     except HTTPException:
