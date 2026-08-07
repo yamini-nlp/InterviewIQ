@@ -77,22 +77,58 @@ async def _persist_mlim_analysis(
     doc["user_id"] = current_user["id"]
     if doc.get("timestamp") and hasattr(doc["timestamp"], "isoformat"):
         doc["timestamp"] = doc["timestamp"].isoformat()
-    await db.mlim_analyses.insert_one(doc)
 
-    if session:
-        updated_history = (belief_history + [result.gstl.goal_belief_distribution])[-50:]
-        await db.sessions.update_one(
-            {"id": result.session_id, "user_id": current_user["id"]},
-            {"$set": {"goal_belief_history": updated_history}},
+    try:
+        await db.mlim_analyses.insert_one(doc)
+    except Exception as e:
+        metrics.record_mongo_error(operation="mlim_analyses_insert")
+        logger.error(
+            f"Failed to persist MLIM analysis for session {result.session_id}: {e}",
+            exc_info=True,
         )
 
+    if session:
+        try:
+            updated_history = (belief_history + [result.gstl.goal_belief_distribution])[-50:]
+            await db.sessions.update_one(
+                {"id": result.session_id, "user_id": current_user["id"]},
+                {"$set": {"goal_belief_history": updated_history}},
+            )
+        except Exception as e:
+            metrics.record_mongo_error(operation="sessions_update_goal_belief_history")
+            logger.warning(
+                f"Failed to update goal belief history for session {result.session_id}: {e}"
+            )
+
     if escalation_record is not None:
-        escalation_doc = escalation_record.model_dump()
-        if escalation_doc.get("created_at") and hasattr(escalation_doc["created_at"], "isoformat"):
-            escalation_doc["created_at"] = escalation_doc["created_at"].isoformat()
-        if escalation_doc.get("reviewed_at") and hasattr(escalation_doc["reviewed_at"], "isoformat"):
-            escalation_doc["reviewed_at"] = escalation_doc["reviewed_at"].isoformat()
-        await db.mlim_escalations.insert_one(escalation_doc)
+        try:
+            escalation_doc = escalation_record.model_dump()
+            if escalation_doc.get("created_at") and hasattr(escalation_doc["created_at"], "isoformat"):
+                escalation_doc["created_at"] = escalation_doc["created_at"].isoformat()
+            if escalation_doc.get("reviewed_at") and hasattr(escalation_doc["reviewed_at"], "isoformat"):
+                escalation_doc["reviewed_at"] = escalation_doc["reviewed_at"].isoformat()
+            await db.mlim_escalations.insert_one(escalation_doc)
+        except Exception as e:
+            metrics.record_mongo_error(operation="mlim_escalations_insert")
+            logger.warning(
+                f"Failed to persist escalation record for session {result.session_id}: {e}"
+            )
+
+
+def _evaluate_escalation_safe(
+    result: MLIMAnalysis, current_user: dict
+) -> Optional[EscalationRecord]:
+    try:
+        escalation_record = evaluate_escalation(result)
+        if escalation_record is not None:
+            escalation_record.user_id = current_user["id"]
+        return escalation_record
+    except Exception as e:
+        logger.warning(
+            f"Escalation evaluation failed for session {result.session_id}, "
+            f"continuing without escalation: {e}"
+        )
+        return None
 
 
 def _fallback_asl() -> ASLOutput:
@@ -253,9 +289,7 @@ async def analyze(request: MLIMAnalyzeRequest, current_user: dict = Depends(get_
             voice_features=request.voice_features,
         )
 
-        escalation_record: Optional[EscalationRecord] = evaluate_escalation(result)
-        if escalation_record is not None:
-            escalation_record.user_id = current_user["id"]
+        escalation_record: Optional[EscalationRecord] = _evaluate_escalation_safe(result, current_user)
 
         await _persist_mlim_analysis(
             db, result, current_user, session, belief_history, escalation_record
@@ -324,9 +358,7 @@ async def analyze_stream(request: MLIMAnalyzeRequest, current_user: dict = Depen
                 voice_features=request.voice_features,
             )
 
-            escalation_record: Optional[EscalationRecord] = evaluate_escalation(result)
-            if escalation_record is not None:
-                escalation_record.user_id = current_user["id"]
+            escalation_record: Optional[EscalationRecord] = _evaluate_escalation_safe(result, current_user)
 
             await _persist_mlim_analysis(
                 db, result, current_user, session, belief_history, escalation_record
