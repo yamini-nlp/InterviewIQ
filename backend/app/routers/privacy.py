@@ -1,4 +1,3 @@
-import json
 import logging
 
 from fastapi import APIRouter, HTTPException, Depends, Response
@@ -8,6 +7,7 @@ from app.auth.dependencies import get_current_user
 from app.database import get_db
 from app.core import metrics
 from app.services.privacy_service import export_user_data, delete_user_data
+from app.services.pdf_service import build_data_export_pdf
 
 logger = logging.getLogger(__name__)
 
@@ -34,12 +34,21 @@ async def export_data(current_user: dict = Depends(get_current_user)):
         raise HTTPException(
             status_code=500, detail="An unexpected error occurred. Please try again later."
         )
-    content = json.dumps(data, indent=2, default=str)
+
+    try:
+        pdf_bytes = build_data_export_pdf(data)
+    except Exception as e:
+        logger.error(
+            f"PDF export generation failed for user {current_user['id']}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(status_code=500, detail="Could not generate the data export PDF.")
+
     return Response(
-        content=content,
-        media_type="application/json",
+        content=pdf_bytes,
+        media_type="application/pdf",
         headers={
-            "Content-Disposition": f'attachment; filename="user_data_export_{current_user["id"]}.json"'
+            "Content-Disposition": f'attachment; filename="user_data_export_{current_user["id"]}.pdf"'
         },
     )
 
