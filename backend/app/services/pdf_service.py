@@ -57,8 +57,42 @@ SENTIMENT_COLORS = {
 }
 
 
+UNSUPPORTED_CHAR_MAP = {
+    "\u2011": "-",
+    "\u2010": "-",
+    "\u2012": "-",
+    "\u2013": "-",
+    "\u2014": "-",
+    "\u2015": "-",
+    "\u2018": "'",
+    "\u2019": "'",
+    "\u201a": "'",
+    "\u201b": "'",
+    "\u201c": '"',
+    "\u201d": '"',
+    "\u201e": '"',
+    "\u201f": '"',
+    "\u2022": "-",
+    "\u2023": "-",
+    "\u25e6": "-",
+    "\u2026": "...",
+    "\u00a0": " ",
+    "\u2212": "-",
+    "\ufeff": "",
+}
+
+
+def sanitize_text(text):
+    if text is None:
+        return ""
+    text = str(text)
+    for bad, good in UNSUPPORTED_CHAR_MAP.items():
+        text = text.replace(bad, good)
+    return text
+
+
 def esc(text):
-    return escape(str(text if text is not None else "")).replace("\n", "<br/>")
+    return escape(sanitize_text(text)).replace("\n", "<br/>")
 
 
 def hex_to_color(h):
@@ -146,7 +180,7 @@ class HeaderBanner(Flowable):
         c.setFont("Helvetica", 10.5)
         c.drawString(9 * mm, h - 22 * mm, "Interview Performance Report")
         c.setFont("Helvetica-Bold", 8.5)
-        c.drawString(9 * mm, h - 28 * mm, f"{self.job_role}  ·  {self.mode.title()} Mode")
+        c.drawString(9 * mm, h - 28 * mm, sanitize_text(f"{self.job_role}  ·  {self.mode.title()} Mode"))
 
         c.setFont("Helvetica", 8)
         c.drawRightString(w - 34 * mm, h - 9 * mm, f"Generated {self.generated_on}")
