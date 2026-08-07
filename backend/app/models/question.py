@@ -5,6 +5,7 @@ class GenerateQuestionsRequest(BaseModel):
     job_role: str = Field(..., max_length=200)
     job_description: str = Field(..., max_length=10000)
     resume_text: Optional[str] = Field(None, max_length=5000)
+    mode: str = Field("practice", max_length=20)
     num_technical: int = 4
     num_behavioral: int = 3
     num_scenario: int = 3
