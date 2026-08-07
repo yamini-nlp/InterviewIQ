@@ -4,6 +4,17 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: backendUrl,
   },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        encoding: false,
+      };
+    }
+    return config;
+  },
   async rewrites() {
     return [
       {
