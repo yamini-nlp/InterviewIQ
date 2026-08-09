@@ -148,8 +148,7 @@ export default function Simulation() {
         saveSession({ ...session, report });
         router.push(`/report/${session.session_id}`);
       } catch (e) {
-        toast({ title: "Report generation had an issue", description: e instanceof Error ? e.message : "Opening your report anyway.", variant: "warning" });
-        router.push(`/report/${session.session_id}`);
+        toast({ title: "Could not generate report", description: e instanceof Error ? e.message : "Please try again.", variant: "error" });
       } finally {
         setGeneratingReport(false);
       }
