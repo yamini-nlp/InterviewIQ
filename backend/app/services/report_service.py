@@ -11,6 +11,7 @@ async def generate_report(session: Session) -> Report:
     feedback_by_qid = {f.question_id: f for f in session.feedbacks}
     answer_by_qid = {a.question_id: a for a in session.answers}
     answered_questions = [q for q in session.questions if q.id in feedback_by_qid]
+    unanswered_questions = [q for q in session.questions if q.id not in feedback_by_qid]
 
     if not answered_questions:
         return _empty_report(session)
@@ -83,21 +84,35 @@ Scoring guide for hiring_recommendation:
         hiring_rec = "Maybe"
 
     question_breakdown = []
-    for q in answered_questions:
-        f = feedback_by_qid[q.id]
+    for q in session.questions:
+        f = feedback_by_qid.get(q.id)
         a = answer_by_qid.get(q.id)
-        question_breakdown.append({
-            "question": q.text,
-            "category": q.category.value,
-            "difficulty": q.difficulty.value,
-            "answer": a.text if a else "",
-            "score": f.score,
-            "correctness": f.correctness,
-            "sentiment": f.sentiment,
-            "intent": f.intent,
-            "answer_tips": f.answer_tips,
-            "ideal_answer": f.ideal_answer,
-        })
+        if f is not None:
+            question_breakdown.append({
+                "question": q.text,
+                "category": q.category.value,
+                "difficulty": q.difficulty.value,
+                "answer": a.text if a else "",
+                "score": f.score,
+                "correctness": f.correctness,
+                "sentiment": f.sentiment,
+                "intent": f.intent,
+                "answer_tips": f.answer_tips,
+                "ideal_answer": f.ideal_answer,
+            })
+        else:
+            question_breakdown.append({
+                "question": q.text,
+                "category": q.category.value,
+                "difficulty": q.difficulty.value,
+                "answer": a.text if a else "(No answer provided)",
+                "score": 0,
+                "correctness": "Skipped",
+                "sentiment": "",
+                "intent": "",
+                "answer_tips": [],
+                "ideal_answer": "",
+            })
 
     return Report(
         session_id=session.id,
