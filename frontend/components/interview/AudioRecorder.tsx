@@ -10,12 +10,13 @@ interface Props {
   onTranscript: (text: string) => void;
   disabled?: boolean;
   onRecordingChange?: (isRecording: boolean) => void;
+  onTranscribingChange?: (isTranscribing: boolean) => void;
   streamRef?: MutableRefObject<MediaStream | null>;
 }
 
 const BAR_COUNT = 20;
 
-export function AudioRecorder({ onTranscript, disabled, onRecordingChange, streamRef }: Props) {
+export function AudioRecorder({ onTranscript, disabled, onRecordingChange, onTranscribingChange, streamRef }: Props) {
   const {
     isRecording,
     audioBlob,
@@ -41,6 +42,16 @@ export function AudioRecorder({ onTranscript, disabled, onRecordingChange, strea
   useEffect(() => {
     onRecordingChange?.(isRecording);
   }, [isRecording, onRecordingChange]);
+
+  useEffect(() => {
+    onTranscribingChange?.(transcribing);
+  }, [transcribing, onTranscribingChange]);
+
+  useEffect(() => {
+    return () => {
+      onTranscribingChange?.(false);
+    };
+  }, [onTranscribingChange]);
 
   useEffect(() => {
     if (streamRef) streamRef.current = internalStreamRef.current;
