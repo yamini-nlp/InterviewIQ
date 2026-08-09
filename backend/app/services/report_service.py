@@ -11,7 +11,6 @@ async def generate_report(session: Session) -> Report:
     feedback_by_qid = {f.question_id: f for f in session.feedbacks}
     answer_by_qid = {a.question_id: a for a in session.answers}
     answered_questions = [q for q in session.questions if q.id in feedback_by_qid]
-    unanswered_questions = [q for q in session.questions if q.id not in feedback_by_qid]
 
     if not answered_questions:
         return _empty_report(session)
