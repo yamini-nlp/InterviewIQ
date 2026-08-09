@@ -37,6 +37,7 @@ export default function Simulation() {
   const [generatingReport, setGeneratingReport] = useState(false);
   const [inputMode, setInputMode] = useState<InputMode>("text");
   const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [avatarSpeaking, setAvatarSpeaking] = useState(false);
   const [avatarText, setAvatarText] = useState("");
   const [speakEnabled, setSpeakEnabled] = useState(true);
@@ -174,16 +175,17 @@ export default function Simulation() {
   }, [answered, loading, session, handleNext]);
 
   const handleTimeout = useCallback(() => {
-    if (!answered && answer.trim()) {
+    if (answered || loading || isRecording || isTranscribing) return;
+    if (answer.trim()) {
       handleSubmit();
-    } else if (!answered) {
+    } else {
       setMessages((m) => [...m, { role: "user", text: "(No answer provided)" }]);
       const aiMsg = "Alright, let's move on to the next question.";
       setMessages((m) => [...m, { role: "ai", text: aiMsg }]);
       setAnswered(true);
       speakText(aiMsg);
     }
-  }, [answered, answer, handleSubmit, speakText]);
+  }, [answered, loading, isRecording, isTranscribing, answer, handleSubmit, speakText]);
 
   const handleTranscript = useCallback((text: string) => {
     if (text.trim()) setAnswer(text);
@@ -316,7 +318,7 @@ export default function Simulation() {
                     )}
                     {timerActive && !answered && (
                       <div className="w-28">
-                        <TimerBar key={timerKey} duration={120} onTimeout={handleTimeout} />
+                        <TimerBar key={timerKey} duration={120} onTimeout={handleTimeout} paused={isRecording || isTranscribing} />
                       </div>
                     )}
                     <span className="text-[10px] text-neutral-600 font-mono">{currentIndex + 1}/{questions.length}</span>
@@ -371,6 +373,7 @@ export default function Simulation() {
                           onTranscript={handleTranscript}
                           disabled={answered || loading}
                           onRecordingChange={setIsRecording}
+                          onTranscribingChange={setIsTranscribing}
                           streamRef={audioStreamRef}
                         />
                         {answer && !isRecording && (
