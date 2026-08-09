@@ -25,7 +25,7 @@ export default function Setup() {
     if (!jobRole || !jobDescription.trim()) { setError("Please fill in all fields."); return; }
     setLoading(true); setError("");
     try {
-      const data = await generateQuestions({ job_role: jobRole, job_description: jobDescription });
+      const data = await generateQuestions({ job_role: jobRole, job_description: jobDescription, mode });
       saveSession({ session_id: data.session_id, questions: data.questions, mode, job_role: jobRole, job_description: jobDescription });
       router.push(mode === "practice" ? "/practice" : "/simulation");
     } catch (e: any) {
