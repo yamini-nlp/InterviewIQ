@@ -147,7 +147,15 @@ export function useCheatingDetection(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ events: toFlush.map((e) => ({ ...e, session_id: sessionId })) }),
+        body: JSON.stringify({
+          events: toFlush.map((e) => ({
+            session_id: sessionId,
+            event_type: e.type,
+            timestamp: e.timestamp,
+            count: e.count,
+            metadata: e.metadata || {},
+          })),
+        }),
       });
     } catch {
       pendingEventsRef.current = [...toFlush, ...pendingEventsRef.current];
