@@ -6,12 +6,13 @@ import { cn } from "@/lib/utils";
 interface TimerBarProps {
   duration?: number;
   onTimeout?: () => void;
+  paused?: boolean;
   className?: string;
 }
 
 const ANNOUNCE_THRESHOLDS = [50, 20, 5];
 
-export function TimerBar({ duration = 120, onTimeout, className }: TimerBarProps) {
+export function TimerBar({ duration = 120, onTimeout, paused = false, className }: TimerBarProps) {
   const [seconds, setSeconds] = useState(duration);
   const [announcement, setAnnouncement] = useState("");
   const onTimeoutRef = useRef(onTimeout);
@@ -27,13 +28,14 @@ export function TimerBar({ duration = 120, onTimeout, className }: TimerBarProps
   }, [duration]);
 
   useEffect(() => {
+    if (paused) return;
     if (seconds <= 0) {
       onTimeoutRef.current?.();
       return;
     }
     const t = setTimeout(() => setSeconds((s) => Math.max(0, s - 1)), 1000);
     return () => clearTimeout(t);
-  }, [seconds]);
+  }, [seconds, paused]);
 
   useEffect(() => {
     const pct = Math.round((seconds / duration) * 100);
