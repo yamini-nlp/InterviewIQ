@@ -1,5 +1,6 @@
 from io import BytesIO
 from datetime import datetime, timezone
+from typing import Dict
 from xml.sax.saxutils import escape
 
 from reportlab.lib.pagesizes import A4
@@ -402,6 +403,217 @@ def question_block(idx, q, styles):
 
     flow.append(HRFlowable(width="100%", thickness=0.6, color=HexColor(LINE), spaceAfter=8))
     return flow
+
+
+class DataExportBanner(Flowable):
+    def __init__(self, width, height, account_label, generated_on):
+        Flowable.__init__(self)
+        self.width = width
+        self.height = height
+        self.account_label = account_label
+        self.generated_on = generated_on
+
+    def wrap(self, availWidth, availHeight):
+        return self.width, self.height
+
+    def draw(self):
+        c = self.canv
+        w, h = self.width, self.height
+
+        steps = 48
+        for i in range(steps):
+            frac = i / (steps - 1)
+            c.setFillColor(blend(ACCENT_DARK, ACCENT, frac))
+            band_h = h / steps
+            c.rect(0, h - (i + 1) * band_h, w, band_h + 0.6, stroke=0, fill=1)
+
+        c.saveState()
+        c.setFillColor(white)
+        c.setFillAlpha(0.10)
+        c.circle(w - 22 * mm, h - 6 * mm, 26 * mm, stroke=0, fill=1)
+        c.setFillAlpha(0.07)
+        c.circle(w - 40 * mm, h + 4 * mm, 20 * mm, stroke=0, fill=1)
+        c.restoreState()
+
+        c.setFillColor(white)
+        c.setFont("Helvetica-Bold", 24)
+        c.drawString(9 * mm, h - 15 * mm, "InterviewIQ")
+        c.setFont("Helvetica", 10.5)
+        c.drawString(9 * mm, h - 22 * mm, "Personal Data Export")
+        c.setFont("Helvetica-Bold", 8.5)
+        c.drawString(9 * mm, h - 28 * mm, sanitize_text(self.account_label))
+
+        c.setFont("Helvetica", 8)
+        c.drawRightString(w - 9 * mm, h - 9 * mm, f"Generated {self.generated_on}")
+
+
+def _stat_row(label, value, styles):
+    return [
+        Paragraph(esc(label), styles["body"]),
+        Paragraph(f"<b>{esc(value)}</b>", styles["body"]),
+    ]
+
+
+def _stats_table(rows, styles):
+    t = Table(rows, colWidths=[CONTENT_W * 0.6, CONTENT_W * 0.4])
+    t.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("LINEBELOW", (0, 0), (-1, -2), 0.5, HexColor(LINE)),
+    ]))
+    return t
+
+
+def _list_table(header, rows, col_widths, styles):
+    header_cells = [Paragraph(f"<b>{esc(h)}</b>", styles["muted"]) for h in header]
+    body_rows = [[Paragraph(esc(cell), styles["body"]) for cell in row] for row in rows]
+    t = Table([header_cells] + body_rows, colWidths=col_widths, repeatRows=1)
+    style = [
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("BACKGROUND", (0, 0), (-1, 0), HexColor(PANEL)),
+        ("LINEBELOW", (0, 0), (-1, 0), 0.75, HexColor(ACCENT_LIGHT)),
+        ("LINEBELOW", (0, 1), (-1, -1), 0.4, HexColor(LINE)),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+    ]
+    t.setStyle(TableStyle(style))
+    return t
+
+
+def build_data_export_pdf(export: dict) -> bytes:
+    styles = build_styles()
+    buf = BytesIO()
+    doc = SimpleDocTemplate(
+        buf, pagesize=A4,
+        leftMargin=MARGIN, rightMargin=MARGIN, topMargin=8 * mm, bottomMargin=20 * mm,
+        title="InterviewIQ Personal Data Export",
+    )
+
+    story = []
+
+    users = export.get("users") or []
+    user = users[0] if users else {}
+    account_label = user.get("email") or "Account"
+    generated_on = datetime.now(timezone.utc).strftime("%b %d, %Y %H:%M UTC")
+
+    sessions = export.get("sessions") or []
+    reports = export.get("reports") or []
+    mlim_analyses = export.get("mlim_analyses") or []
+    mlim_escalations = export.get("mlim_escalations") or []
+    integrity_events = export.get("integrity_events") or []
+
+    story.append(DataExportBanner(CONTENT_W, 36 * mm, account_label, generated_on))
+    story.append(Spacer(1, 10))
+
+    story.extend(section_title("Account Information", styles))
+    story.append(_stats_table([
+        _stat_row("Name", user.get("name", "Not available"), styles),
+        _stat_row("Email", user.get("email", "Not available"), styles),
+        _stat_row("Account ID", user.get("id", "Not available"), styles),
+        _stat_row("Account Created", user.get("created_at", "Not available"), styles),
+        _stat_row("Last Login", user.get("last_login") or "Not available", styles),
+    ], styles))
+    story.append(Spacer(1, 14))
+
+    story.extend(section_title("Data Summary", styles))
+    story.append(_stats_table([
+        _stat_row("Interview Sessions", len(sessions), styles),
+        _stat_row("Generated Reports", len(reports), styles),
+        _stat_row("MLIM Analyses Recorded", len(mlim_analyses), styles),
+        _stat_row("MLIM Escalations", len(mlim_escalations), styles),
+        _stat_row("Integrity Events Logged", len(integrity_events), styles),
+    ], styles))
+    story.append(Spacer(1, 14))
+
+    story.extend(section_title("Interview Sessions", styles))
+    if sessions:
+        rows = []
+        for s in sessions:
+            rows.append([
+                s.get("job_role", "") or "-",
+                (s.get("mode", "") or "-").title(),
+                str(s.get("created_at", "-"))[:19],
+                "Yes" if s.get("completed_at") else "No",
+                f'{s.get("overall_score")}/10' if s.get("overall_score") is not None else "-",
+            ])
+        story.append(_list_table(
+            ["Job Role", "Mode", "Created", "Completed", "Score"],
+            rows,
+            [CONTENT_W * 0.32, CONTENT_W * 0.16, CONTENT_W * 0.26, CONTENT_W * 0.13, CONTENT_W * 0.13],
+            styles,
+        ))
+    else:
+        story.append(Paragraph("No interview sessions recorded.", styles["muted"]))
+    story.append(Spacer(1, 14))
+
+    story.extend(section_title("Generated Reports", styles))
+    if reports:
+        rows = []
+        for r in reports:
+            rows.append([
+                r.get("job_role", "") or "-",
+                (r.get("mode", "") or "-").title(),
+                f'{r.get("overall_score", 0)}/10',
+                r.get("hiring_recommendation") or "-",
+            ])
+        story.append(_list_table(
+            ["Job Role", "Mode", "Overall Score", "Hiring Recommendation"],
+            rows,
+            [CONTENT_W * 0.36, CONTENT_W * 0.18, CONTENT_W * 0.2, CONTENT_W * 0.26],
+            styles,
+        ))
+    else:
+        story.append(Paragraph("No reports have been generated.", styles["muted"]))
+    story.append(Spacer(1, 14))
+
+    story.extend(section_title("MLIM Analytics Summary", styles))
+    if mlim_analyses:
+        entropies = [float(a.get("ifl", {}).get("entropy", 0)) for a in mlim_analyses]
+        stress_vals = [float(a.get("gstl", {}).get("stress_indicators", 0)) for a in mlim_analyses]
+        masking_count = sum(1 for a in mlim_analyses if a.get("asl", {}).get("affective_masking_detected"))
+        sarcasm_count = sum(1 for a in mlim_analyses if a.get("pel", {}).get("sarcasm_detected"))
+        distinct_sessions = len({a.get("session_id") for a in mlim_analyses})
+        story.append(_stats_table([
+            _stat_row("Total Analyses", len(mlim_analyses), styles),
+            _stat_row("Sessions Analyzed", distinct_sessions, styles),
+            _stat_row("Average Entropy", f"{(sum(entropies) / len(entropies)):.3f}" if entropies else "0.000", styles),
+            _stat_row("Average Stress Indicator", f"{(sum(stress_vals) / len(stress_vals)):.3f}" if stress_vals else "0.000", styles),
+            _stat_row("Affective Masking Detected", masking_count, styles),
+            _stat_row("Sarcasm Detected", sarcasm_count, styles),
+        ], styles))
+    else:
+        story.append(Paragraph("No MLIM analyses recorded.", styles["muted"]))
+    story.append(Spacer(1, 14))
+
+    story.extend(section_title("Integrity Events", styles))
+    if integrity_events:
+        counts: Dict[str, int] = {}
+        for e in integrity_events:
+            key = e.get("event_type", "unknown")
+            counts[key] = counts.get(key, 0) + 1
+        rows = [[k.replace("_", " ").title(), str(v)] for k, v in sorted(counts.items(), key=lambda kv: -kv[1])]
+        story.append(_list_table(["Event Type", "Occurrences"], rows, [CONTENT_W * 0.7, CONTENT_W * 0.3], styles))
+    else:
+        story.append(Paragraph("No integrity events logged.", styles["muted"]))
+    story.append(Spacer(1, 14))
+
+    story.extend(section_title("About This Export", styles))
+    story.append(panel(Paragraph(
+        esc(
+            "This document contains a summary of all personal data associated with your "
+            "InterviewIQ account, including interview sessions, generated reports, MLIM "
+            "(Multi-Layer Intent Modeling) analytics, and integrity monitoring events. "
+            "Detailed question-by-question breakdowns for a specific session are available "
+            "as individual PDF reports from that session's report page."
+        ),
+        styles["body"],
+    )))
+
+    doc.build(story, onFirstPage=footer, onLaterPages=footer)
+    return buf.getvalue()
 
 
 def build_report_pdf(report: dict) -> bytes:
