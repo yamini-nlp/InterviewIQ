@@ -37,6 +37,7 @@ export async function generateQuestions(payload: {
   job_role: string;
   job_description: string;
   resume_text?: string;
+  mode?: "practice" | "simulation";
   num_technical?: number;
   num_behavioral?: number;
   num_scenario?: number;
