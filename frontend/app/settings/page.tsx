@@ -44,12 +44,12 @@ export default function SettingsPage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `interviewiq_data_export_${user?.id ?? "account"}.json`;
+      link.download = `interviewiq_data_export_${user?.id ?? "account"}.pdf`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
-      toast({ title: "Export ready", description: "Your data export has been downloaded.", variant: "success" });
+      toast({ title: "Export ready", description: "Your data export PDF has been downloaded.", variant: "success" });
     } catch (err) {
       toast({
         title: "Export failed",
