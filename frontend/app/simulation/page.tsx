@@ -161,6 +161,7 @@ export default function Simulation() {
       setTimerActive(false);
       setMessages((m) => [...m, { role: "ai", text: next.text }]);
       speakText(next.text);
+      cheating.flushEvents(session.session_id, "");
     }
   }, [session, currentIndex, router, speakText, cheating, toast]);
 
@@ -273,9 +274,17 @@ export default function Simulation() {
                 <p className="text-sm text-neutral-800 leading-snug line-clamp-2">{current?.text}</p>
               </div>
 
-              <div className="px-4 py-2 h-10 overflow-hidden">
-                {messages.filter((m) => m.role === "ai").slice(-1).map((m, i) => (
-                  <p key={i} className="text-xs text-neutral-500 leading-relaxed line-clamp-2 animate-fade-in">{m.text}</p>
+              <div className="px-4 py-2 space-y-1 max-h-20 overflow-y-auto">
+                {messages.slice(-4).map((m, i) => (
+                  <p
+                    key={i}
+                    className={`text-xs leading-relaxed animate-fade-in ${m.role === "ai" ? "text-neutral-500" : "text-neutral-800 font-medium"}`}
+                  >
+                    <span className="text-[9px] uppercase tracking-wide text-neutral-400 mr-1">
+                      {m.role === "ai" ? "Interviewer:" : "You:"}
+                    </span>
+                    {m.text}
+                  </p>
                 ))}
               </div>
 
