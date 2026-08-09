@@ -10,6 +10,7 @@ import { cn, scoreColor } from "@/lib/utils";
 
 interface FeedbackCardProps {
   feedback: Feedback | null;
+  answer?: string;
   loading?: boolean;
   error?: string | null;
   onRetry?: () => void;
@@ -55,7 +56,7 @@ function CollapsibleSection({
   );
 }
 
-export function FeedbackCard({ feedback, loading = false, error = null, onRetry, onSkip }: FeedbackCardProps) {
+export function FeedbackCard({ feedback, answer, loading = false, error = null, onRetry, onSkip }: FeedbackCardProps) {
   if (loading) {
     return (
       <Card className="space-y-5 border-neutral-200">
@@ -101,6 +102,19 @@ export function FeedbackCard({ feedback, loading = false, error = null, onRetry,
         </div>
         <Progress value={feedback.score} max={10} size="sm" className="w-32" />
       </div>
+
+      {answer && answer.trim() && (
+        <CollapsibleSection
+          title="Your Answer"
+          icon={<CheckCircle2 size={12} />}
+          accentClass="text-neutral-600"
+          defaultOpen
+        >
+          <div className="bg-neutral-100 rounded-xl p-3 border border-neutral-200">
+            <p className="text-sm text-neutral-700 leading-relaxed whitespace-pre-wrap">{answer}</p>
+          </div>
+        </CollapsibleSection>
+      )}
 
       {feedback.strengths.length > 0 && (
         <CollapsibleSection
