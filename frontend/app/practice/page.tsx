@@ -119,6 +119,7 @@ export default function Practice() {
     const isLast = currentIndex === questions.length - 1;
     if (isLast) {
       try {
+        await cheating.flushEvents(session.session_id, "");
         const report = await generateReport(session.session_id);
         saveSession({ ...session, report });
         router.push(`/report/${session.session_id}`);
@@ -135,8 +136,9 @@ export default function Practice() {
       setTimerKey((k) => k + 1);
       setTimerActive(false);
       speak(next.text);
+      cheating.flushEvents(session.session_id, "");
     }
-  }, [session, currentIndex, router, speak, toast]);
+  }, [session, currentIndex, router, speak, toast, cheating]);
 
   const handleSkip = useCallback(() => {
     if (feedback || loading || !session) return;
@@ -301,7 +303,7 @@ export default function Practice() {
                   </div>
                 ) : (
                   <div className="px-4 py-3 space-y-3">
-                    <FeedbackCard feedback={feedback} loading={loading} error={feedbackError} onRetry={retryFeedback} onSkip={handleSkip} />
+                    <FeedbackCard feedback={feedback} answer={lastAnswerRef.current} loading={loading} error={feedbackError} onRetry={retryFeedback} onSkip={handleSkip} />
                     {feedback && (
                       <Button
                         onClick={handleNext}
