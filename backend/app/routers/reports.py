@@ -39,45 +39,43 @@ async def generate(session_id: str, current_user: dict = Depends(get_current_use
 
         session = Session(**data)
 
-        if len(session.feedbacks) == 0 and len(session.answers) > 0:
-            feedbacks = []
-            corrected_answers = []
-            questions = session.questions
-            answers = session.answers
+        existing_feedback_qids = {f.question_id for f in session.feedbacks}
+        answer_by_qid = {a.question_id: a for a in session.answers}
+        questions_needing_feedback = [
+            q for q in session.questions
+            if q.id in answer_by_qid and q.id not in existing_feedback_qids
+        ]
 
-            for i, answer in enumerate(answers):
-                q = questions[i] if i < len(questions) else (questions[-1] if questions else None)
-                if q:
-                    corrected_answers.append(Answer(
-                        question_id=q.id, text=answer.text, timestamp=answer.timestamp
+        if questions_needing_feedback:
+            new_feedbacks = []
+            for q in questions_needing_feedback:
+                answer = answer_by_qid[q.id]
+                try:
+                    fb = await evaluate_answer(
+                        question_id=q.id,
+                        question_text=q.text,
+                        category=str(q.category.value),
+                        difficulty=str(q.difficulty.value),
+                        answer_text=answer.text,
+                        job_role=session.job_role,
+                    )
+                    new_feedbacks.append(fb)
+                except Exception as eval_err:
+                    logger.warning(f"Eval error for question {q.id} in session {session_id}: {eval_err}")
+                    new_feedbacks.append(Feedback(
+                        question_id=q.id,
+                        correctness="Partially Correct",
+                        score=5,
+                        strengths=["Answer provided"],
+                        weaknesses=["Could not evaluate"],
+                        ideal_answer="",
+                        suggestions=[],
+                        sentiment="neutral",
+                        intent="",
+                        answer_tips=[],
                     ))
-                    try:
-                        fb = await evaluate_answer(
-                            question_id=q.id,
-                            question_text=q.text,
-                            category=str(q.category.value),
-                            difficulty=str(q.difficulty.value),
-                            answer_text=answer.text,
-                            job_role=session.job_role,
-                        )
-                        feedbacks.append(fb)
-                    except Exception as eval_err:
-                        logger.warning(f"Eval error for Q{i} in session {session_id}: {eval_err}")
-                        feedbacks.append(Feedback(
-                            question_id=q.id,
-                            correctness="Partially Correct",
-                            score=5,
-                            strengths=["Answer provided"],
-                            weaknesses=["Could not evaluate"],
-                            ideal_answer="",
-                            suggestions=[],
-                            sentiment="neutral",
-                            intent="",
-                            answer_tips=[],
-                        ))
 
-            session.feedbacks = feedbacks
-            session.answers = corrected_answers
+            session.feedbacks = session.feedbacks + new_feedbacks
 
         integrity_events = data.get("integrity_events", [])
         tab_switches = sum(1 for e in integrity_events if e.get("event_type") == "tab_switch")
