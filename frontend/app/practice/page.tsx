@@ -170,6 +170,18 @@ export default function Practice() {
         </div>
       )}
 
+      {!started && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center gap-5 text-center px-6">
+          <p className="text-2xl font-bold text-white">Ready to begin?</p>
+          <p className="text-neutral-400 text-sm max-w-sm">
+            Your interviewer will read each question out loud. Click below to start — this also enables audio in your browser.
+          </p>
+          <Button size="lg" onClick={handleBegin} className="active:scale-95">
+            <Play size={16} /> Begin Practice
+          </Button>
+        </div>
+      )}
+
       {cheating.suspended && (
         <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center gap-4">
           <AlertTriangle size={48} className="text-error-400" />
