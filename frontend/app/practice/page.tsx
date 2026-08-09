@@ -33,6 +33,7 @@ export default function Practice() {
   const [timerActive, setTimerActive] = useState(false);
   const [inputMode, setInputMode] = useState<InputMode>("text");
   const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [avatarSpeaking, setAvatarSpeaking] = useState(false);
   const [avatarText, setAvatarText] = useState("");
   const [ttsEnabled, setTtsEnabled] = useState(true);
@@ -147,9 +148,10 @@ export default function Practice() {
   }, [feedback, loading, session]);
 
   const handleTimeout = useCallback(() => {
-    if (!feedback && answer.trim()) handleSubmit();
-    else if (!feedback) handleSubmit("(No answer provided)");
-  }, [feedback, answer, handleSubmit]);
+    if (feedback || loading || isRecording || isTranscribing) return;
+    if (answer.trim()) handleSubmit();
+    else handleSubmit("(No answer provided)");
+  }, [feedback, loading, isRecording, isTranscribing, answer, handleSubmit]);
 
   const handleTranscript = useCallback((text: string) => {
     if (text.trim()) setAnswer(text);
@@ -259,7 +261,7 @@ export default function Practice() {
                         </button>
                         {timerActive && (
                           <div className="w-28">
-                            <TimerBar key={timerKey} duration={120} onTimeout={handleTimeout} />
+                            <TimerBar key={timerKey} duration={120} onTimeout={handleTimeout} paused={isRecording || isTranscribing} />
                           </div>
                         )}
                       </div>
@@ -287,6 +289,7 @@ export default function Practice() {
                             onTranscript={handleTranscript}
                             disabled={loading || cheating.suspended}
                             onRecordingChange={setIsRecording}
+                            onTranscribingChange={setIsTranscribing}
                             streamRef={micStreamRef}
                           />
                           {answer && !isRecording && (
