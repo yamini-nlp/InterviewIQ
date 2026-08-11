@@ -170,67 +170,134 @@ export default function Home() {
       <LandingHeader />
 
       <section
-        className="relative min-h-[100dvh] pt-32 pb-20 flex flex-col items-center justify-center px-6 overflow-hidden"
+        className="relative pt-40 pb-24 px-6 overflow-hidden"
         style={{
-          backgroundImage: "radial-gradient(ellipse 900px 500px at 50% -10%, rgba(108,99,255,0.16), transparent 60%)",
+          backgroundImage: "radial-gradient(ellipse 800px 420px at 15% 0%, rgba(108,99,255,0.14), transparent 60%)",
         }}
       >
-        <div className="relative z-10 max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 mb-6 px-4 py-1.5 rounded-full" style={{ background: "rgba(108,99,255,0.1)", border: "1px solid rgba(108,99,255,0.2)" }}>
-            <span className="w-1 h-1 rounded-full bg-[#6c63ff] animate-pulse" />
-            <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "#a78bfa" }}>AI interviewer · voice, camera & intent, live</span>
-          </div>
+        <div className="relative z-10 max-w-7xl mx-auto grid lg:grid-cols-[1.05fr_1fr] gap-16 items-center">
+          <div>
+            <div className="flex items-center gap-2 mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#6c63ff]" />
+              <span className="text-[11px] font-mono uppercase tracking-[0.2em]" style={{ color: "#8b85ff" }}>
+                Performance analytics, built in
+              </span>
+            </div>
 
-          <h1 className="font-display font-extrabold uppercase leading-[0.98] text-white text-[2.6rem] sm:text-6xl lg:text-[4.25rem] tracking-tight">
-            InterviewIQ
-          </h1>
+            <h1 className="font-display font-extrabold text-white leading-[0.98] tracking-tight" style={{ fontSize: "clamp(2.8rem, 5.5vw, 4.5rem)" }}>
+              InterviewIQ
+            </h1>
 
-          <p className="font-display font-medium mt-4 text-lg sm:text-xl tracking-tight" style={{ color: "#8b85ff" }}>
-            A live AI interviewer that reads the answer behind your answer.
-          </p>
+            <p className="font-display font-medium mt-4 text-lg sm:text-xl tracking-tight" style={{ color: "#8b85ff" }}>
+              A live AI interviewer that reads the answer behind your answer.
+            </p>
 
-          <p className="font-sans mt-6 max-w-xl mx-auto text-base leading-relaxed" style={{ color: "#9ca3af" }}>
-            Experience interviews with an intelligent AI interviewer that speaks naturally, understands your voice, and evaluates every response through the MLIM pipeline—measuring emotion, intent, communication quality, and behavioral consistency to deliver deep, actionable insights.
-          </p>
+            <p className="font-sans mt-6 max-w-md text-base leading-relaxed" style={{ color: "#9ca3af" }}>
+              Experience interviews with an intelligent AI interviewer that speaks naturally, understands your voice, and evaluates every response through the MLIM pipeline—measuring emotion, intent, communication quality, and behavioral consistency to deliver deep, actionable insights.
+            </p>
 
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link href="/register">
-              <button
+            <div className="mt-9 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <a
+                href="https://interview-iq-umber.vercel.app/register"
                 className="group inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-sans font-semibold text-white text-sm transition-all duration-200 hover:-translate-y-0.5 bg-accent"
                 style={{ boxShadow: "0 0 40px rgba(108,99,255,0.3), 0 4px 16px rgba(0,0,0,0.4)" }}
               >
                 Start session
                 <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-1" />
-              </button>
-            </Link>
-            <Link
-              href="/login"
-              className="font-sans inline-flex items-center px-7 py-3.5 rounded-xl font-medium text-sm transition-colors"
-              style={{ color: "#e5e7eb", border: "1px solid rgba(255,255,255,0.14)" }}
-            >
-              Sign in
-            </Link>
-          </div>
-        </div>
-
-        <div className="relative z-10 mt-16 max-w-4xl w-full mx-auto grid sm:grid-cols-3 gap-4">
-          {[
-            { icon: Volume2, label: "AI Interviewer", desc: "Speaks questions aloud, lip-synced, live." },
-            { icon: Mic, label: "Voice & Camera", desc: "Whisper transcription plus facial expression read." },
-            { icon: Target, label: "Intent Fusion", desc: "Entropy-scored label, auto-clarified." },
-          ].map((f) => (
-            <div
-              key={f.label}
-              className="rounded-2xl p-5 text-left transition-all duration-200 hover:-translate-y-0.5"
-              style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}
-            >
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-4" style={{ background: "rgba(108,99,255,0.12)", border: "1px solid rgba(108,99,255,0.22)" }}>
-                <f.icon size={15} style={{ color: "#8b85ff" }} />
-              </div>
-              <h3 className="font-display font-semibold text-white text-sm mb-1.5">{f.label}</h3>
-              <p className="font-sans text-xs leading-relaxed" style={{ color: "#9ca3af" }}>{f.desc}</p>
+              </a>
+              <Link
+                href="/login"
+                className="font-sans text-sm font-medium transition-colors"
+                style={{ color: "#e5e7eb" }}
+              >
+                Sign in →
+              </Link>
             </div>
-          ))}
+
+            <div className="mt-12 flex flex-wrap items-center gap-x-6 gap-y-2">
+              {["4-layer intent model", "7 emotion classes", "Live voice & camera"].map((t) => (
+                <span key={t} className="text-xs font-mono" style={{ color: "#6b7280" }}>{t}</span>
+              ))}
+            </div>
+          </div>
+
+          <div className="relative">
+            <div className="rounded-3xl p-6" style={{ background: "#0d0e14", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 30px 80px -20px rgba(0,0,0,0.6)" }}>
+              <div className="flex items-center justify-between mb-6">
+                <span className="text-xs font-semibold text-white">Session report</span>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: "rgba(108,99,255,0.1)", border: "1px solid rgba(108,99,255,0.2)" }}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#6c63ff] animate-pulse" />
+                  <span className="text-[9px] font-mono uppercase tracking-widest" style={{ color: "#a78bfa" }}>Live session</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-6 mb-6">
+                <div className="relative w-24 h-24 flex-shrink-0">
+                  <svg viewBox="0 0 100 100" className="w-24 h-24 -rotate-90">
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="8" />
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="#6c63ff" strokeWidth="8" strokeLinecap="round" strokeDasharray="216 264" />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-xl font-display font-bold text-white">82</span>
+                    <span className="text-[9px] font-mono" style={{ color: "#6b7280" }}>/ 100</span>
+                  </div>
+                </div>
+                <div className="flex-1 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px]" style={{ color: "#9ca3af" }}>Integrity score</span>
+                    <span className="text-[11px] font-mono font-semibold" style={{ color: "#34d399" }}>98%</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px]" style={{ color: "#9ca3af" }}>Weak areas flagged</span>
+                    <span className="text-[11px] font-mono font-semibold" style={{ color: "#fb923c" }}>3</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px]" style={{ color: "#9ca3af" }}>Questions answered</span>
+                    <span className="text-[11px] font-mono font-semibold text-white">8 / 8</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl p-4 mb-4" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "#6b7280" }}>Score across sessions</span>
+                  <Activity size={12} style={{ color: "#6c63ff" }} />
+                </div>
+                <svg viewBox="0 0 240 70" className="w-full h-14">
+                  <polyline points="0,58 48,46 96,50 144,30 192,22 240,8" fill="none" stroke="#6c63ff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <circle cx="0" cy="58" r="3" fill="#6c63ff" />
+                  <circle cx="240" cy="8" r="3" fill="#6c63ff" />
+                </svg>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-[9px] font-mono" style={{ color: "#6b7280" }}>Session 1</span>
+                  <span className="text-[9px] font-mono" style={{ color: "#6b7280" }}>Session 5</span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {[
+                  { label: "System design", pct: 92 },
+                  { label: "Communication", pct: 78 },
+                  { label: "Problem solving", pct: 85 },
+                ].map((row) => (
+                  <div key={row.label}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px]" style={{ color: "#b0b4bd" }}>{row.label}</span>
+                      <span className="text-[11px] font-mono" style={{ color: "#6b7280" }}>{row.pct}%</span>
+                    </div>
+                    <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.05)" }}>
+                      <div className="h-full rounded-full" style={{ width: `${row.pct}%`, background: "#6c63ff" }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="absolute -bottom-5 -left-5 rounded-2xl px-4 py-3 hidden sm:flex items-center gap-2" style={{ background: "#0d0e14", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 50px -15px rgba(0,0,0,0.6)" }}>
+              <Check size={13} style={{ color: "#34d399" }} />
+              <span className="text-[11px] font-medium text-white">Report exported as PDF</span>
+            </div>
+          </div>
         </div>
       </section>
 
