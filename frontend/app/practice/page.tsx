@@ -9,16 +9,19 @@ import { FeedbackCard } from "@/components/interview/FeedbackCard";
 import { TimerBar } from "@/components/interview/TimerBar";
 import { InterviewerAvatar } from "@/components/interview/InterviewerAvatar";
 import { LiveAnalyticsPanel } from "@/components/interview/LiveAnalyticsPanel";
-import { AudioRecorder } from "@/components/interview/AudioRecorder";
+import { VoiceAnswerPanel } from "@/components/interview/VoiceAnswerPanel";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/hooks/useToast";
 import { useMLIM } from "@/hooks/useMLIM";
 import { useCheatingDetection } from "@/hooks/useCheatingDetection";
 import { unlockSpeechSynthesis } from "@/lib/speech";
+import type { FinalizeReason } from "@/hooks/useInterviewVoiceInput";
 import { ChevronRight, AlertTriangle, Keyboard, Mic, Volume2, VolumeX, SkipForward, Play } from "lucide-react";
 
 type InputMode = "text" | "voice";
+
+const ANSWER_TIME_LIMIT_SECONDS = 120;
 
 export default function Practice() {
   const router = useRouter();
@@ -32,8 +35,8 @@ export default function Practice() {
   const [timerKey, setTimerKey] = useState(0);
   const [timerActive, setTimerActive] = useState(false);
   const [inputMode, setInputMode] = useState<InputMode>("text");
-  const [isRecording, setIsRecording] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [voiceListening, setVoiceListening] = useState(false);
+  const [voiceBusy, setVoiceBusy] = useState(false);
   const [avatarSpeaking, setAvatarSpeaking] = useState(false);
   const [avatarText, setAvatarText] = useState("");
   const [ttsEnabled, setTtsEnabled] = useState(true);
@@ -44,6 +47,7 @@ export default function Practice() {
   const micStreamRef = useRef<MediaStream | null>(null);
   const videoStreamRef = useRef<MediaStream | null>(null);
   const lastAnswerRef = useRef("");
+  const submittingRef = useRef(false);
   const mlim = useMLIM();
   const cheating = useCheatingDetection(true, micStreamRef, videoStreamRef);
 
@@ -76,7 +80,8 @@ export default function Practice() {
 
   const handleSubmit = useCallback(async (overrideAnswer?: string) => {
     const ans = overrideAnswer ?? answer;
-    if (!ans.trim() || loading || !session) return;
+    if (!ans.trim() || submittingRef.current || !session) return;
+    submittingRef.current = true;
     lastAnswerRef.current = ans;
     setLoading(true);
     setFeedbackError(null);
@@ -106,8 +111,9 @@ export default function Practice() {
       toast({ title: "Feedback failed", description: message, variant: "error" });
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
-  }, [answer, loading, session, currentIndex, mlim, speak, toast, faceData]);
+  }, [answer, session, currentIndex, mlim, speak, toast, faceData]);
 
   const retryFeedback = useCallback(() => {
     handleSubmit(lastAnswerRef.current);
@@ -142,20 +148,21 @@ export default function Practice() {
   }, [session, currentIndex, router, speak, toast, cheating]);
 
   const handleSkip = useCallback(() => {
-    if (feedback || loading || !session) return;
+    if (feedback || loading || submittingRef.current || !session) return;
     setTimerActive(false);
     setSkipped(true);
   }, [feedback, loading, session]);
 
   const handleTimeout = useCallback(() => {
-    if (feedback || loading || isRecording || isTranscribing) return;
+    if (feedback || loading) return;
     if (answer.trim()) handleSubmit();
     else handleSubmit("(No answer provided)");
-  }, [feedback, loading, isRecording, isTranscribing, answer, handleSubmit]);
+  }, [feedback, loading, answer, handleSubmit]);
 
-  const handleTranscript = useCallback((text: string) => {
-    if (text.trim()) setAnswer(text);
-  }, []);
+  const handleVoiceFinalize = useCallback((finalAnswer: string, _reason: FinalizeReason) => {
+    const ans = finalAnswer.trim() || "(No answer provided)";
+    handleSubmit(ans);
+  }, [handleSubmit]);
 
   if (!session) return null;
   const questions: Question[] = session.questions;
@@ -199,7 +206,7 @@ export default function Practice() {
           <div className="flex-1 flex flex-col p-3 gap-3 min-w-0">
             <div className="relative flex-1 min-h-0 rounded-2xl overflow-hidden">
               <VideoPanel
-                isSpeaking={isRecording}
+                isSpeaking={voiceListening}
                 mlimAnalysis={mlim.latestAnalysis}
                 mlimAnalyzing={mlim.isAnalyzing}
                 onFaceData={setFaceData}
@@ -254,14 +261,14 @@ export default function Practice() {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={handleSkip}
-                          disabled={loading}
+                          disabled={loading || voiceListening || voiceBusy}
                           className="flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-mono border border-neutral-200 text-neutral-500 hover:text-neutral-700 transition-all active:scale-95 disabled:opacity-50"
                         >
                           <SkipForward size={9} /> SKIP
                         </button>
-                        {timerActive && (
+                        {timerActive && inputMode === "text" && (
                           <div className="w-28">
-                            <TimerBar key={timerKey} duration={120} onTimeout={handleTimeout} paused={isRecording || isTranscribing} />
+                            <TimerBar key={timerKey} duration={ANSWER_TIME_LIMIT_SECONDS} onTimeout={handleTimeout} />
                           </div>
                         )}
                       </div>
@@ -283,25 +290,17 @@ export default function Practice() {
                         </Button>
                       </div>
                     ) : (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <AudioRecorder
-                            onTranscript={handleTranscript}
-                            disabled={loading || cheating.suspended}
-                            onRecordingChange={setIsRecording}
-                            onTranscribingChange={setIsTranscribing}
-                            streamRef={micStreamRef}
-                          />
-                          {answer && !isRecording && (
-                            <Button onClick={() => handleSubmit()} disabled={loading} loading={loading} className="flex-shrink-0 px-3 active:scale-95">Submit</Button>
-                          )}
-                        </div>
-                        {answer && !isRecording && (
-                          <div className="bg-neutral-100 rounded-xl px-3 py-1.5 border border-neutral-200">
-                            <p className="text-xs text-neutral-600 line-clamp-2">{answer}</p>
-                          </div>
-                        )}
-                      </div>
+                      <VoiceAnswerPanel
+                        active={timerActive}
+                        resetKey={timerKey}
+                        timeLimitSeconds={ANSWER_TIME_LIMIT_SECONDS}
+                        disabled={cheating.suspended || loading}
+                        onFinalize={handleVoiceFinalize}
+                        onListeningChange={setVoiceListening}
+                        onBusyChange={setVoiceBusy}
+                        streamRef={micStreamRef}
+                        onMicUnavailable={() => setInputMode("text")}
+                      />
                     )}
                   </div>
                 ) : (
