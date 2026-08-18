@@ -8,13 +8,14 @@ import { VideoPanel } from "@/components/interview/VideoPanel";
 import { TimerBar } from "@/components/interview/TimerBar";
 import { InterviewerAvatar } from "@/components/interview/InterviewerAvatar";
 import { LiveAnalyticsPanel } from "@/components/interview/LiveAnalyticsPanel";
-import { AudioRecorder } from "@/components/interview/AudioRecorder";
+import { VoiceAnswerPanel } from "@/components/interview/VoiceAnswerPanel";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/hooks/useToast";
 import { useMLIM } from "@/hooks/useMLIM";
 import { useCheatingDetection } from "@/hooks/useCheatingDetection";
 import { unlockSpeechSynthesis } from "@/lib/speech";
+import type { FinalizeReason } from "@/hooks/useInterviewVoiceInput";
 import { Loader2, ChevronRight, AlertTriangle, Send, Keyboard, Mic, Volume2, SkipForward, Play } from "lucide-react";
 
 interface Message {
@@ -23,6 +24,8 @@ interface Message {
 }
 
 type InputMode = "voice" | "text";
+
+const ANSWER_TIME_LIMIT_SECONDS = 120;
 
 export default function Simulation() {
   const router = useRouter();
@@ -36,8 +39,8 @@ export default function Simulation() {
   const [answered, setAnswered] = useState(false);
   const [generatingReport, setGeneratingReport] = useState(false);
   const [inputMode, setInputMode] = useState<InputMode>("text");
-  const [isRecording, setIsRecording] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [voiceListening, setVoiceListening] = useState(false);
+  const [voiceBusy, setVoiceBusy] = useState(false);
   const [avatarSpeaking, setAvatarSpeaking] = useState(false);
   const [avatarText, setAvatarText] = useState("");
   const [speakEnabled, setSpeakEnabled] = useState(true);
@@ -47,6 +50,7 @@ export default function Simulation() {
 
   const audioStreamRef = useRef<MediaStream | null>(null);
   const videoStreamRef = useRef<MediaStream | null>(null);
+  const submittingRef = useRef(false);
   const mlim = useMLIM();
   const cheating = useCheatingDetection(true, audioStreamRef, videoStreamRef);
 
@@ -84,7 +88,8 @@ export default function Simulation() {
 
   const handleSubmit = useCallback(async (submittedAnswer?: string) => {
     const answerToSubmit = submittedAnswer ?? answer;
-    if (!answerToSubmit.trim() || loading || !session) return;
+    if (!answerToSubmit.trim() || submittingRef.current || !session) return;
+    submittingRef.current = true;
     setLoading(true);
     setTimerActive(false);
     const questions: Question[] = session.questions;
@@ -133,8 +138,9 @@ export default function Simulation() {
       });
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
-  }, [answer, loading, session, currentIndex, mlim, speakText, faceData, toast]);
+  }, [answer, session, currentIndex, mlim, speakText, faceData, toast]);
 
   const handleNext = useCallback(async () => {
     if (!session) return;
@@ -167,7 +173,7 @@ export default function Simulation() {
   }, [session, currentIndex, router, speakText, cheating, toast]);
 
   const handleSkip = useCallback(() => {
-    if (answered || loading || !session) return;
+    if (answered || loading || submittingRef.current || !session) return;
     setTimerActive(false);
     setMessages((m) => [...m, { role: "user", text: "(Question skipped)" }]);
     setAnswer("");
@@ -175,7 +181,7 @@ export default function Simulation() {
   }, [answered, loading, session, handleNext]);
 
   const handleTimeout = useCallback(() => {
-    if (answered || loading || isRecording || isTranscribing) return;
+    if (answered || loading) return;
     if (answer.trim()) {
       handleSubmit();
     } else {
@@ -185,11 +191,12 @@ export default function Simulation() {
       setAnswered(true);
       speakText(aiMsg);
     }
-  }, [answered, loading, isRecording, isTranscribing, answer, handleSubmit, speakText]);
+  }, [answered, loading, answer, handleSubmit, speakText]);
 
-  const handleTranscript = useCallback((text: string) => {
-    if (text.trim()) setAnswer(text);
-  }, []);
+  const handleVoiceFinalize = useCallback((finalAnswer: string, _reason: FinalizeReason) => {
+    const ans = finalAnswer.trim() || "(No answer provided)";
+    handleSubmit(ans);
+  }, [handleSubmit]);
 
   if (!session) return null;
 
@@ -238,7 +245,7 @@ export default function Simulation() {
           <div className="flex-1 flex flex-col p-4 gap-3 min-w-0">
             <div className="relative flex-1 min-h-0 rounded-2xl overflow-hidden">
               <VideoPanel
-                isSpeaking={isRecording}
+                isSpeaking={voiceListening}
                 mlimAnalysis={mlim.latestAnalysis}
                 mlimAnalyzing={mlim.isAnalyzing}
                 onFaceData={setFaceData}
@@ -252,7 +259,7 @@ export default function Simulation() {
                   speaking={avatarSpeaking}
                   onSpeakEnd={handleAvatarSpeakEnd}
                   thinking={loading && !avatarSpeaking}
-                  listening={isRecording && !avatarSpeaking}
+                  listening={voiceListening && !avatarSpeaking}
                 />
                 <div className="absolute bottom-1 left-1/2 -translate-x-1/2">
                   <span className="text-[8px] text-neutral-400 bg-black/50 px-1.5 py-0.5 rounded font-mono border border-neutral-200">AI INTERVIEWER</span>
@@ -310,15 +317,15 @@ export default function Simulation() {
                     {!answered && (
                       <button
                         onClick={handleSkip}
-                        disabled={loading}
+                        disabled={loading || voiceListening || voiceBusy}
                         className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-mono border border-neutral-200 text-neutral-500 hover:text-neutral-700 transition-all active:scale-95 disabled:opacity-50"
                       >
                         <SkipForward size={10} /> SKIP
                       </button>
                     )}
-                    {timerActive && !answered && (
+                    {timerActive && !answered && inputMode === "text" && (
                       <div className="w-28">
-                        <TimerBar key={timerKey} duration={120} onTimeout={handleTimeout} paused={isRecording || isTranscribing} />
+                        <TimerBar key={timerKey} duration={ANSWER_TIME_LIMIT_SECONDS} onTimeout={handleTimeout} />
                       </div>
                     )}
                     <span className="text-[10px] text-neutral-600 font-mono">{currentIndex + 1}/{questions.length}</span>
@@ -368,26 +375,17 @@ export default function Simulation() {
                 ) : (
                   <div className="flex items-center gap-3">
                     {!answered ? (
-                      <>
-                        <AudioRecorder
-                          onTranscript={handleTranscript}
-                          disabled={answered || loading}
-                          onRecordingChange={setIsRecording}
-                          onTranscribingChange={setIsTranscribing}
-                          streamRef={audioStreamRef}
-                        />
-                        {answer && !isRecording && (
-                          <Button
-                            onClick={() => handleSubmit()}
-                            disabled={loading}
-                            loading={loading}
-                            leftIcon={<Send size={14} />}
-                            className="active:scale-95"
-                          >
-                            Submit
-                          </Button>
-                        )}
-                      </>
+                      <VoiceAnswerPanel
+                        active={timerActive}
+                        resetKey={timerKey}
+                        timeLimitSeconds={ANSWER_TIME_LIMIT_SECONDS}
+                        disabled={loading}
+                        onFinalize={handleVoiceFinalize}
+                        onListeningChange={setVoiceListening}
+                        onBusyChange={setVoiceBusy}
+                        streamRef={audioStreamRef}
+                        onMicUnavailable={() => setInputMode("text")}
+                      />
                     ) : (
                       <Button
                         onClick={handleNext}
@@ -399,11 +397,6 @@ export default function Simulation() {
                           <><Loader2 size={14} className="animate-spin" /> Generating...</>
                         ) : isLast ? "View Report" : <><ChevronRight size={14} /> Next Question</>}
                       </Button>
-                    )}
-                    {answer && !answered && !isRecording && (
-                      <div className="flex-1 bg-neutral-100 rounded-xl px-3 py-2 border border-neutral-200">
-                        <p className="text-xs text-neutral-600 line-clamp-2">{answer}</p>
-                      </div>
                     )}
                   </div>
                 )}
