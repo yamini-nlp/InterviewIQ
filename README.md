@@ -33,16 +33,17 @@ Around that core sit the parts that make it usable as a real application: email/
 ## ✨ What It Does
 
 - **Role-specific question generation** — an LLM generates a fresh set of technical, behavioral, and scenario questions from a pasted job description and role, at three difficulty levels, on every session.
-- **Practice mode** — one question at a time on a countdown timer, answered by text or voice (transcribed via Whisper), with a structured feedback card (correctness, 0–10 score, strengths, weaknesses, ideal answer, suggestions) returned immediately after each answer.
+- **Practice mode** — one question at a time on a countdown timer, answered by text or voice, with a structured feedback card (correctness, 0–10 score, strengths, weaknesses, ideal answer, suggestions) returned immediately after each answer.
 - **Simulation mode** — a strict interviewer persona that gives only brief acknowledgements during the session; every answer is scored together at the end via a single report-generation call.
+- **Production-grade voice answering** — live, continuously-updating captions via the Web Speech API while you talk, in parallel with a `MediaRecorder` capture that's transcribed server-side via Groq Whisper as the authoritative answer text; finish by pressing **Done**, saying **"that's all"** / **"I'm done"**, or letting the countdown expire — every path stops the mic, locks the transcript exactly once (idempotent, race-condition-guarded finalization), and hands off to evaluation automatically.
 - **Streamed interviewer responses** — simulation-mode acknowledgements and clarification follow-ups are streamed token-by-token over Server-Sent Events rather than returned as one blocking call.
 - **Four-layer MLIM pipeline**, run on every answer (see the layer table below): affective-sentiment detection, pragmatic/speech-act classification, goal-state tracking with drift detection, and intent fusion with per-feature attribution.
-- **Escalation flagging** — answers with high intent-entropy combined with high modeled stress, or high-confidence affective masking, are automatically written to an escalation queue an admin-scoped endpoint can review and resolve.
+- **Escalation flagging** — answers with high intent-entropy combined with high modeled stress, or high-confidence affective masking, are automatically written to a per-user escalation queue that the candidate can review and resolve via `GET`/`PATCH /api/mlim/escalations`.
 - **Live camera-based proctoring** — face-api.js runs `TinyFaceDetector` + expression analysis in-browser during the interview to flag no-face and multiple-face conditions, alongside tab-switch, window-blur, copy/paste, right-click, DevTools-open, and inactivity detection; repeated flags disable the camera/mic streams client-side.
 - **Final assessment report** — overall score, category breakdown (technical knowledge / communication / clarity / confidence), a per-question expandable Q&A view, an MLIM session summary, an integrity summary derived from the proctoring events, and a PDF export built with ReportLab.
 - **JWT authentication** — httpOnly access/refresh cookies, refresh-token rotation with reuse detection (a reused refresh token revokes every session for that user), per-IP rate limiting on login/register, and account lockout after repeated failed attempts.
 - **Session dashboard** — a history view of past sessions with score tracking, plus a dedicated MLIM analytics dashboard (valence/arousal scatter, goal-belief area chart, intent-entropy line chart, failure-mode timeline).
-- **Self-service privacy controls** — a full JSON export of every record tied to a user's account, and a confirmation-gated account deletion that cascades across sessions, reports, MLIM analyses, escalations, and integrity events.
+- **Self-service privacy controls** — a full data export (every record tied to a user's account, rendered as a downloadable PDF via ReportLab) and a confirmation-gated account deletion that cascades across sessions, reports, MLIM analyses, escalations, and integrity events.
 - **Cross-session fairness probing** — an admin-only endpoint that paraphrases a base answer into four writing-style variants (formal, informal, non-native-simplified, terse) and checks whether the intent label stays stable across them, as a lightweight bias check on the intent classifier.
 - **Mutual-information benchmarking** — compares how much information a sentiment-only signal carries about the recommended action versus the full MLIM signal, with differential-privacy (Laplace) noise applied when aggregating across more than one session.
 
@@ -71,11 +72,13 @@ These sit around the MLIM pipeline and the interview flow rather than inside it:
 | `VideoPanel` + face-api.js | Runs `TinyFaceDetector` with expression analysis in-browser to flag no-face and multiple-faces-in-frame conditions during proctored sessions |
 | `POST /api/integrity/events` | Batches and persists proctoring events per session, feeding the integrity score shown in the final report |
 | JWT auth (`app/auth/`) | httpOnly access + refresh cookies, refresh-token rotation with reuse detection (a reused token revokes every session for that user), bcrypt password hashing, per-IP rate limiting on login/register, and account lockout after repeated failed attempts |
-| `evaluate_escalation` (`services/mlim/escalation.py`) | Flags an answer for admin review when modeled intent-entropy and stress are both high, or when affective masking is detected with high confidence |
-| `/api/privacy/export` / `/api/privacy/account` | Full JSON export of every record tied to a user, and a confirmation-gated account deletion cascading across sessions, reports, MLIM analyses, escalations, and integrity events, implemented in `privacy_service.py` |
+| `evaluate_escalation` (`services/mlim/escalation.py`) | Flags an answer into the candidate's own escalation queue when modeled intent-entropy and stress are both high, or when affective masking is detected with high confidence — reviewable and resolvable via `GET`/`PATCH /api/mlim/escalations` |
+| `/api/privacy/export` / `/api/privacy/account` | Full data export of every record tied to a user, rendered as a downloadable PDF, and a confirmation-gated account deletion cascading across sessions, reports, MLIM analyses, escalations, and integrity events, implemented in `privacy_service.py` |
 | `add_laplace_noise` (`privacy_service.py`) | Applies differential-privacy noise to cross-session mutual-information estimates before returning them, when more than one session contributes to the aggregate |
 | `app/core/metrics.py` | A hand-rolled Prometheus-text metrics registry (counters, gauges, histograms) tracking per-route request latency, per-MLIM-stage timing, and Groq/Mongo error counts, exposed at `/metrics` |
-| Security response headers | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, and a `Permissions-Policy` denying camera/mic/geolocation to every origin but the app itself, applied on every response |
+| Security response headers | `X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`, `Referrer-Policy`, and a `Permissions-Policy` denying camera/mic/geolocation to every origin but the app itself, applied on every response |
+
+> **Note on `require_admin`:** only the fairness-probe endpoint (`POST /api/mlim/fairness/probe`) is gated behind an admin role check. The escalation-queue endpoints are per-user, self-service surfaces — not a cross-candidate moderator dashboard (see Limitations).
 
 ---
 
@@ -131,11 +134,19 @@ POST /api/integrity/events (batched) ──► session.integrity_events
 **Voice input flow**
 
 ```
-Microphone → MediaRecorder (audio/webm) → POST /api/questions/transcribe
-                                                    │
-                                              Groq Whisper Large v3
-                                                    │
-                                             Transcript → Answer field
+Microphone ──► Web Speech API ──► live interim + final captions on screen
+     │                                    │
+     │                        "that's all" / "I'm done" detected ──► finalize
+     │
+     └──► MediaRecorder (audio/webm) ──stop on Done / voice command / timeout──►
+                                                                                  │
+                                                                                  ▼
+                                                              POST /api/questions/transcribe
+                                                                                  │
+                                                                        Groq Whisper Large v3
+                                                                                  │
+                                                          Transcript (falls back to live captions
+                                                             on transcription failure) → Answer field
 ```
 
 > **Graceful degradation:** every MLIM layer has a fallback output (`_fallback_asl`, `_fallback_pel`, `_fallback_gstl`, `_fallback_ifl`) used when the corresponding Groq call fails, and session state falls back to an in-memory store when MongoDB is unreachable, so the interview flow does not hard-fail on a single upstream error.
@@ -205,6 +216,7 @@ The frontend has no unit-test suite; CI instead runs `tsc --noEmit` and `next bu
 | Fast model for per-layer calls, reasoning model for generation/report | `gpt-oss-20b` for ASL/PEL/IFL, `gpt-oss-120b` for question/report generation and GSTL's reasoning pass | Keeps latency down on the calls that run on every single answer, reserving the larger model for calls that happen once per session or once per goal-tracking step |
 | In-memory session fallback | Practice/Simulation flow works even when `get_db()` returns `None` | The interview session shouldn't hard-fail because of a transient MongoDB Atlas connection issue |
 | Refresh-token rotation with reuse detection | Every refresh issues a new token and invalidates the old one; reuse of an already-rotated token revokes all sessions for that user | Standard mitigation against stolen refresh tokens, without requiring a separate session-revocation UI |
+| Idempotent, race-guarded voice-answer finalization | `useInterviewVoiceInput` drives a `Date.now()`-based countdown (immune to re-render throttling) and a ref-guarded `finalize()` that Done, the "that's all" voice command, and timeout all funnel through, so a near-simultaneous trigger from more than one path still submits exactly once | Voice UIs have three independent event sources racing to end the same answer (user click, speech event, timer tick); a single idempotent finalize path is simpler and safer than de-duplicating after the fact |
 | Client-side proctoring signals, server-side integrity scoring | Detection (`useCheatingDetection`, face-api.js) runs in the browser; the backend only stores and scores the resulting events | Keeps the browser responsive (no round-trip needed to flag a tab switch) while keeping the integrity score itself server-computed and tamper-resistant to simple client patching |
 | Hand-rolled Prometheus metrics registry over a dependency | `app/core/metrics.py` implements Counter/Gauge/Histogram from scratch | Avoids adding a metrics-client dependency for a handful of counters and one latency histogram; output is still real Prometheus text format at `/metrics` |
 | Differential-privacy noise on cross-session MI comparisons | `add_laplace_noise` applied only when aggregating more than one session | The mutual-information benchmark is a diagnostic aggregate, not a per-session value shown to the user, so it gets the added privacy protection when it spans sessions |
@@ -232,7 +244,7 @@ The frontend has no unit-test suite; CI instead runs `tsc --noEmit` and `next bu
 - **LLM-based scoring is not a standardized rubric:** correctness, score, and category-level feedback all depend on the reasoning model's judgment at generation time, and can vary between runs of the same answer.
 - **No adaptive difficulty:** question difficulty is fixed at generation time and does not change based on how the candidate is performing mid-session.
 - **In-memory session fallback is not durable:** when MongoDB is unavailable, session state lives only in the FastAPI process's memory and is lost on restart or redeploy.
-- **Escalation review has no notification path:** flagged answers are written to `mlim_escalations` and exposed via `GET /api/mlim/escalations`, but nothing currently pages or emails an admin when one is created.
+- **Escalation review is self-service, not a moderator queue:** `GET`/`PATCH /api/mlim/escalations` are scoped to `get_current_user` and filtered by `user_id`, so a flagged answer is only visible to the candidate who gave it — there is no cross-user admin review surface or notification/paging path for a human reviewer today; `require_admin` currently gates only the fairness-probe endpoint.
 
 ---
 
@@ -242,7 +254,7 @@ The frontend has no unit-test suite; CI instead runs `tsc --noEmit` and `next bu
 - Extend the fairness probe from an intent-label-stability check into a proper fairness evaluation, once a labeled evaluation set with protected-attribute proxies exists.
 - Adaptive question difficulty, adjusted mid-session from the candidate's running MLIM/score signal rather than fixed at generation time.
 - Resume upload with parsing, so question generation can personalize to a candidate's actual background rather than job description alone.
-- Notification/paging integration for the escalation queue, so a flagged session doesn't require someone to poll `GET /api/mlim/escalations`.
+- A real admin-scoped moderation view over the escalation queue (`require_admin`-gated, cross-user), with notification/paging so a flagged session doesn't require polling `GET /api/mlim/escalations`.
 - Replace the browser-only proctoring signals with a server-verifiable integrity check (e.g. periodic server-side frame sampling) to reduce client-side defeatability.
 - Cross-session analytics beyond the current MLIM dashboard — trend lines for intent stability and goal drift across a user's full session history, not just within one session.
 
@@ -284,7 +296,7 @@ cd InterviewIQ
 
 **2. Configure environment**
 
-Copy `.env.example` to `backend/.env` and fill in the required values:
+Copy `.env.example` to `.env` **in the project root** and fill in the required values — this is the file `docker-compose.yml` loads (via `env_file: .env`) for both the `backend` and `frontend` services:
 
 ```env
 GROQ_API_KEY=gsk_your_key_here
@@ -294,6 +306,8 @@ DB_NAME=interviewiq
 ALLOWED_ORIGINS=http://localhost:3000
 ALLOWED_HOSTS=localhost,127.0.0.1
 ```
+
+> Running the backend manually without Docker (step 4 below)? Copy the same file to `backend/.env` as well — `pydantic-settings` loads `.env` relative to the directory `uvicorn` is started from.
 
 **3. Run with Docker Compose (recommended)**
 ```bash
@@ -333,7 +347,7 @@ ruff check .
 
 1. Register an account, then go to **Setup** — select a job role, paste a job description, choose Practice or Simulation mode
 2. Click **Start Interview** — questions are generated in real time
-3. Answer each question via text or voice recording; grant camera/mic access if you want the proctoring signals active
+3. Answer each question via text or voice; grant camera/mic access if you want the proctoring signals active. In voice mode, live captions appear as you speak — finish with **Done**, saying **"that's all,"** or let the timer run out
 4. In Practice mode, review your feedback card and live MLIM panel after each answer
 5. Complete all questions to receive your **Final Assessment Report**
 6. Export the report as PDF, review the **MLIM Analytics Dashboard**, or view past sessions on the main **Dashboard**
@@ -364,13 +378,13 @@ InterviewIQ/
 │   │   └── api/auth/              # Next.js route handlers proxying to the FastAPI auth API
 │   ├── components/
 │   │   ├── ui/                    # Button, Card, Badge, Progress, Dialog, Toast, Skeleton, EmptyState, ErrorState
-│   │   ├── interview/              # QuestionCard, FeedbackCard, VideoPanel, AudioRecorder, TimerBar, InterviewerAvatar, LiveAnalyticsPanel
+│   │   ├── interview/              # QuestionCard, FeedbackCard, VideoPanel, VoiceAnswerPanel, TimerBar, InterviewerAvatar, LiveAnalyticsPanel
 │   │   ├── mlim/                  # MLIMAnalyticsCharts, MLIMReportSection
 │   │   ├── dashboard/              # SessionCard, PerformanceChart
 │   │   └── layout/                 # AppShell, Navbar, Sidebar, Breadcrumbs, LandingHeader
 │   ├── contexts/AuthContext.tsx
-│   ├── hooks/                     # useAuth, useInterview, useMLIM, useCamera, useAudioRecorder, useCheatingDetection, useToast
-│   ├── lib/                       # api.ts, mlim-api.ts, stream-api.ts, auth.ts, storage.ts, utils.ts, theme.ts
+│   ├── hooks/                     # useAuth, useInterview, useInterviewVoiceInput, useMLIM, useCamera, useCheatingDetection, useToast
+│   ├── lib/                       # api.ts, mlim-api.ts, stream-api.ts, auth.ts, storage.ts, speech.ts, utils.ts, theme.ts
 │   ├── types/                     # index.ts, mlim.ts
 │   └── public/models/             # face-api.js model weights (TinyFaceDetector, landmarks, expressions)
 │
