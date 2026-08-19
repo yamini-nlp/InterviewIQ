@@ -25,7 +25,7 @@ async function tryRefresh(refreshToken: string): Promise<string[] | null> {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Cookie: `rr_refresh_token=${refreshToken}`,
+        Cookie: `iq_refresh_token=${refreshToken}`,
       },
     });
     if (!res.ok) return null;
@@ -46,13 +46,13 @@ export async function middleware(request: NextRequest) {
 
   if (isPrefetchRequest(request)) return NextResponse.next();
 
-  const accessToken = request.cookies.get("rr_access_token")?.value;
+  const accessToken = request.cookies.get("iq_access_token")?.value;
 
   if (isAuthPage) {
     if (accessToken) {
       return NextResponse.redirect(new URL(safeRedirectTarget(request), request.url));
     }
-    const refreshTokenForAuthPage = request.cookies.get("rr_refresh_token")?.value;
+    const refreshTokenForAuthPage = request.cookies.get("iq_refresh_token")?.value;
     if (refreshTokenForAuthPage) {
       const setCookies = await tryRefresh(refreshTokenForAuthPage);
       if (setCookies) {
@@ -63,8 +63,8 @@ export async function middleware(request: NextRequest) {
         return response;
       }
       const cleared = NextResponse.next();
-      cleared.cookies.delete("rr_access_token");
-      cleared.cookies.delete("rr_refresh_token");
+      cleared.cookies.delete("iq_access_token");
+      cleared.cookies.delete("iq_refresh_token");
       return cleared;
     }
     return NextResponse.next();
@@ -72,7 +72,7 @@ export async function middleware(request: NextRequest) {
 
   if (accessToken) return NextResponse.next();
 
-  const refreshToken = request.cookies.get("rr_refresh_token")?.value;
+  const refreshToken = request.cookies.get("iq_refresh_token")?.value;
   if (refreshToken) {
     const setCookies = await tryRefresh(refreshToken);
     if (setCookies) {
@@ -87,8 +87,8 @@ export async function middleware(request: NextRequest) {
   const loginUrl = new URL("/login", request.url);
   loginUrl.searchParams.set("redirect", pathname);
   const redirectResponse = NextResponse.redirect(loginUrl);
-  redirectResponse.cookies.delete("rr_access_token");
-  redirectResponse.cookies.delete("rr_refresh_token");
+  redirectResponse.cookies.delete("iq_access_token");
+  redirectResponse.cookies.delete("iq_refresh_token");
   return redirectResponse;
 }
 
