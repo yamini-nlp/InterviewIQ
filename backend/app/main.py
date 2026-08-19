@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Response
+ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import PlainTextResponse
@@ -33,7 +33,7 @@ async def lifespan(app: FastAPI):
     await close_redis()
 
 
-app = FastAPI(title="PrepVision API", version=_APP_VERSION, lifespan=lifespan)
+app = FastAPI(title="InterviewIQ API", version=_APP_VERSION, lifespan=lifespan)
 
 register_exception_handlers(app)
 
