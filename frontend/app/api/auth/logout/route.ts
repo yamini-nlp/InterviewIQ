@@ -24,15 +24,15 @@ export async function POST(request: NextRequest) {
       for (const cookie of setCookies) {
         response.headers.append("set-cookie", cookie);
       }
-      response.cookies.delete("rr_access_token");
-      response.cookies.delete("rr_refresh_token");
+      response.cookies.delete("iq_access_token");
+      response.cookies.delete("iq_refresh_token");
       return response;
     } catch {
     }
   }
 
   const response = NextResponse.json({ message: "Logged out" });
-  response.cookies.delete("rr_access_token");
-  response.cookies.delete("rr_refresh_token");
+  response.cookies.delete("iq_access_token");
+  response.cookies.delete("iq_refresh_token");
   return response;
 }
