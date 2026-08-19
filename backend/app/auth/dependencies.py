@@ -12,7 +12,7 @@ async def get_current_user(
     request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer),
 ) -> dict:
-    token = request.cookies.get("rr_access_token")
+    token = request.cookies.get("iq_access_token")
     if not token and credentials is not None:
         token = credentials.credentials
     if not token:
