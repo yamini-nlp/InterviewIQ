@@ -1,4 +1,4 @@
-const USER_KEY = "rr_user";
+const USER_KEY = "iq_user";
 
 export function clearTokens() {
   if (typeof localStorage !== "undefined") localStorage.removeItem(USER_KEY);
