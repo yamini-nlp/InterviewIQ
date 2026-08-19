@@ -22,8 +22,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-ACCESS_COOKIE = "rr_access_token"
-REFRESH_COOKIE = "rr_refresh_token"
+ACCESS_COOKIE = "iq_access_token"
+REFRESH_COOKIE = "iq_refresh_token"
 
 GENERIC_INVALID_CREDENTIALS_MESSAGE = "Invalid credentials"
 
